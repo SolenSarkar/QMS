@@ -3,6 +3,7 @@ import "./App.css";
 import AttributeMaster from "./AttributeMaster";
 import AttributeValues from "./AttributeValues";
 import QuestionsPage from "./Questions";
+import UserManagement from "./UserManagement";
 
 export default function AdminDashboard({ onLogout }) {
   const [mainPage, setMainPage] = useState('dashboard');
@@ -109,10 +110,10 @@ export default function AdminDashboard({ onLogout }) {
         )}
         <aside className="admin-sidepanel">
           <ul>
-            <li style={{fontWeight: mainPage === 'dashboard' ? 700 : 600, cursor: 'pointer'}} onClick={() => setMainPage('dashboard')}>Dashboard</li>
-            <li style={{fontWeight: mainPage === 'questions' ? 700 : 600, cursor: 'pointer'}} onClick={() => setMainPage('questions')}>Questions</li>
+            <li style={{fontWeight: mainPage === 'dashboard' ? 700 : 600, cursor:'pointer'}} onClick={() => setMainPage('dashboard')}>Dashboard</li>
+            <li style={{fontWeight: mainPage === 'questions' ? 700 : 600, cursor:'pointer'}} onClick={() => setMainPage('questions')}>Questions</li>
             <li style={{fontWeight: 600}}>Results</li>
-            <li style={{fontWeight: 600}}>Manage Users</li>
+            <li style={{fontWeight: mainPage === 'user-management' ? 700 : 600, cursor:'pointer'}} onClick={() => setMainPage('user-management')}>Manage Users</li>
             <li style={{fontWeight: 600}}>Settings</li>
           </ul>
         </aside>
@@ -141,6 +142,9 @@ export default function AdminDashboard({ onLogout }) {
           )}
           {mainPage === 'questions' && (
             <QuestionsPage onHomeClick={() => setMainPage('dashboard')} />
+          )}
+          {mainPage === 'user-management' && (
+            <UserManagement onHomeClick={() => setMainPage('dashboard')} />
           )}
         </main>
       </div>

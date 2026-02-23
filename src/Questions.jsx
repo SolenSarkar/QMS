@@ -27,9 +27,75 @@
     return id;
   };
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+
+function PasskeyPopup({
+  pendingSubject,
+  enteredPasskey,
+  setEnteredPasskey,
+  passkeyError,
+  onClose,
+  onVerify
+}) {
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  return (
+    <div style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      width: "100vw",
+      height: "100vh",
+      background: "rgba(0,0,0,0.4)",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: 2000
+    }}>
+      <div style={{
+        background: "white",
+        padding: 30,
+        borderRadius: 12,
+        width: 350,
+        textAlign: "center"
+      }}>
+        <h3>Enter Passkey for {pendingSubject?.valueName}</h3>
+
+        <input
+          ref={inputRef}
+          type="password"
+          value={enteredPasskey}
+          onChange={(e) => setEnteredPasskey(e.target.value)}
+          placeholder="Enter passkey"
+          style={{
+            width: "100%", padding: 10, marginTop: 15, borderRadius: 6, border: "1px solid #ccc"
+          }}
+        />
+
+        {passkeyError && (
+          <p style={{ color: "red", marginTop: 10 }}>
+            {passkeyError}
+          </p>
+        )}
+
+        <div style={{ marginTop: 20, display: "flex", justifyContent: "space-between" }}>
+          <button onClick={onClose} style={{ padding: "8px 16px", borderRadius: 6, border: "none", background: "#ddd", cursor: "pointer" }}>Cancel</button>
+          <button onClick={onVerify} style={{ padding: "8px 16px", borderRadius: 6, border: "none", background: "#4c6fff", color: "white", cursor: "pointer" }}>Unlock</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 export default function QuestionsPage({ onHomeClick }) {
+  
+// "grid" or "dropdown"
+const [subjectViewMode, setSubjectViewMode] = useState("grid");
 
   // Dropdown data
   const [boards, setBoards] = useState([]);
@@ -48,7 +114,17 @@ export default function QuestionsPage({ onHomeClick }) {
   const [showAddPopup, setShowAddPopup] = useState(false);
   const [questions, setQuestions] = useState([]);
   const [activeTab, setActiveTab] = useState("");
-
+  const [showPasskeyPopup, setShowPasskeyPopup] = useState(false);
+  const passkeyInputRef = useRef(null);
+  const [pendingSubject, setPendingSubject] = useState(null);
+  const [enteredPasskey, setEnteredPasskey] = useState("");
+  const [passkeyError, setPasskeyError] = useState("");
+  const [unlockedSubjects, setUnlockedSubjects] = useState([]);
+  const subjectPasskeys = {
+  "Math": "math123",
+  "Science": "sci123",
+  "English": "eng123"
+};
 
   // Fetch boards, classes, subjects, topics from backend (assuming attribute values)
   useEffect(() => {
@@ -75,6 +151,7 @@ export default function QuestionsPage({ onHomeClick }) {
         }
       });
   }, []);
+
 
   // Fetch subjects for selected class (filter by classId)
   useEffect(() => {
@@ -103,7 +180,11 @@ export default function QuestionsPage({ onHomeClick }) {
         }
       });
   }, [selectedClass]);
-
+  useEffect(() => {
+  if (showPasskeyPopup && passkeyInputRef.current) {
+    passkeyInputRef.current.focus();
+  }
+}, [showPasskeyPopup]);
   // Fetch questions for selected class and subject
   useEffect(() => {
     if (!selectedClass || !activeTab) {
@@ -181,6 +262,35 @@ export default function QuestionsPage({ onHomeClick }) {
       })
       .catch(() => alert("Failed to add question. Please try again."));
   };
+  
+const handleSubjectClick = (subject) => {
+  if (unlockedSubjects.includes(subject._id)) {
+    setActiveTab(subject._id);
+    setSubjectViewMode("dropdown");
+    return;
+  }
+
+  setPendingSubject(subject);
+  setEnteredPasskey("");
+  setPasskeyError("");
+  setShowPasskeyPopup(true);
+};
+
+const verifyPasskey = () => {
+  if (!pendingSubject) return;
+
+  const correctKey = subjectPasskeys[pendingSubject.valueName];
+
+  if (enteredPasskey === correctKey) {
+    setUnlockedSubjects(prev => [...prev, pendingSubject._id]);
+    setActiveTab(pendingSubject._id);
+    setShowPasskeyPopup(false);
+    setSubjectViewMode("dropdown");
+  } else {
+    setPasskeyError("Incorrect passkey. Try again.");
+  }
+};
+
 
   // Popup/modal for add question (decoupled state)
   const AddQuestionPopup = () => {
@@ -272,7 +382,8 @@ export default function QuestionsPage({ onHomeClick }) {
         })
         .catch(() => alert("Failed to add question. Please try again."));
     };
-
+    
+    
     return (
       <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(40, 40, 60, 0.35)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(2.5px)' }}>
         <div style={{ background: 'linear-gradient(135deg, #f8fafc 60%, #e9eafc 100%)', padding: '38px 32px 28px 32px', borderRadius: '20px 1px 1px 20px', minWidth: 360, maxWidth: 480, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 16px 48px 0 rgba(60, 60, 120, 0.18), 0 2px 12px rgba(60, 60, 120, 0.10)', border: '1.5px solid #e0e3f5', position: 'relative', textAlign: 'center', transition: 'box-shadow 0.2s, border 0.2s', animation: 'modalPopIn 0.25s cubic-bezier(.4,1.6,.6,1) 1' }}>
@@ -395,27 +506,96 @@ export default function QuestionsPage({ onHomeClick }) {
           + Add Question
         </button>
       </div>
-      {subjects.length > 0 && (
-        <div className="questions-subject-tabs-grid">
-          {subjects.map((sub, idx) => (
-            <React.Fragment key={sub._id}>
-              <button
-                className={"questions-subject-tab" + (activeTab === sub._id ? " active" : "")}
-                onClick={() => setActiveTab(sub._id)}
-                style={{ marginBottom: 12 }}
-              >
-                {sub.valueName}
-              </button>
-              {(idx % 2 === 1) && <div style={{ width: '100%' }}></div>}
-            </React.Fragment>
-          ))}
-        </div>
-      )}
+{subjects.length > 0 && ( subjectViewMode === "grid" ? (
+
+  // 🔵 GRID VIEW
+  <div className="questions-subject-tabs-grid">
+    {subjects.map((sub, idx) => (
+      <React.Fragment key={sub._id}>
+        <button
+          className={
+            "questions-subject-tab" +
+            (activeTab === sub._id ? " active" : "")
+          }
+          onClick={() => handleSubjectClick(sub)}
+          style={{ marginBottom: 12 }}
+        >
+          {sub.valueName}
+        </button>
+
+        {(idx % 2 === 1) && <div style={{ width: "100%" }}></div>}
+      </React.Fragment>
+    ))}
+  </div>
+
+) : (
+
+  // 🔵 DROPDOWN VIEW
+  <div style={{ marginBottom: 20,fontSize:'20px' }}>
+    <label style={{ marginRight: 10, fontWeight: 600, color:'#ffff' }}>
+      Subject:
+    </label>
+
+    <select
+      value={activeTab}
+      onChange={(e) => {
+    const selected = subjects.find(
+      sub => sub._id === e.target.value
+    );
+    if (selected) {
+      handleSubjectClick(selected);
+    }
+  }}
+      style={{
+        padding: 8,
+        borderRadius: 6,
+        border: "1px solid #ccc",
+        fontSize:'15px'
+      }}
+    >
+      {subjects.map(sub => (
+        <option key={sub._id} value={sub._id}>
+          {sub.valueName}
+        </option>
+      ))}
+    </select>
+
+    <button
+      onClick={() => setSubjectViewMode("grid")}
+      style={{
+        marginLeft: 15,
+        padding: "6px 12px",
+        borderRadius: 6,
+        border: "none",
+        background: "#ddd",
+        fontSize:'15px',
+        cursor: "pointer"
+      }}
+    >
+      Change Subject
+    </button>
+  </div>
+)
+)}
+
       {/* Show topics for the selected subject tab */}
       {activeTab && (
         <TopicsSection subjectId={activeTab} topics={topics} />
       )}
+      
+
       {showAddPopup && <AddQuestionPopup />}
+      {showPasskeyPopup && (
+  <PasskeyPopup
+    pendingSubject={pendingSubject}
+    enteredPasskey={enteredPasskey}
+    setEnteredPasskey={setEnteredPasskey}
+    passkeyError={passkeyError}
+    onClose={() => setShowPasskeyPopup(false)}
+    onVerify={verifyPasskey}
+  />
+)}
+
       <div style={{ marginTop: 24 }}>
         {questions.length === 0 ? (
           <div className="questions-no-data">No questions found for this class and subject.</div>
