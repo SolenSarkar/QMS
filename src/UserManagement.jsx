@@ -9,6 +9,11 @@ export default function UserManagement({ onHomeClick }) {
   const [showPopup, setShowPopup] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   
+  // Test records state
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [testRecords, setTestRecords] = useState([]);
+  const [loadingTestRecords, setLoadingTestRecords] = useState(false);
+  
   // Form states
   const [formData, setFormData] = useState({
     name: "",
@@ -27,22 +32,25 @@ export default function UserManagement({ onHomeClick }) {
 
   // Fetch classes and boards
   useEffect(() => {
-    fetch("http://localhost:5000/api/attributes")
+    fetch("/api/attributes")
       .then(res => res.json())
       .then(attrs => {
         const boardAttr = attrs.find(a => a.name.toLowerCase() === "board");
         if (boardAttr) {
-          fetch(`http://localhost:5000/api/values/${boardAttr._id}`)
+          fetch(`/api/values/${boardAttr._id}`)
             .then(res => res.json())
-            .then(setBoards);
+            .then(data => setBoards(data.filter(v => v.status === 'Active')))
+            .catch(err => console.error("Error fetching boards:", err));
         }
         const classAttr = attrs.find(a => a.name.toLowerCase() === "class");
         if (classAttr) {
-          fetch(`http://localhost:5000/api/values/${classAttr._id}`)
+          fetch(`/api/values/${classAttr._id}`)
             .then(res => res.json())
-            .then(setClasses);
+            .then(data => setClasses(data.filter(v => v.status === 'Active')))
+            .catch(err => console.error("Error fetching classes:", err));
         }
-      });
+      })
+      .catch(err => console.error("Error fetching attributes:", err));
   }, []);
 
   // Fetch users
@@ -50,16 +58,18 @@ export default function UserManagement({ onHomeClick }) {
     setLoading(true);
     try {
       if (activeTab === "students") {
-        const res = await fetch("http://localhost:5000/api/students");
+        const res = await fetch("/api/students");
         const data = await res.json();
-        setStudents(data);
+        setStudents(Array.isArray(data) ? data : []);
       } else {
-        const res = await fetch("http://localhost:5000/api/admins");
+        const res = await fetch("/api/admins");
         const data = await res.json();
-        setAdmins(data);
+        setAdmins(Array.isArray(data) ? data : []);
       }
     } catch (err) {
       console.error("Error fetching users:", err);
+      setStudents([]);
+      setAdmins([]);
     }
     setLoading(false);
   };
@@ -134,7 +144,7 @@ export default function UserManagement({ onHomeClick }) {
         if (editingUser) {
           // Update student
           const { password, ...updateData } = preparedData;
-          const res = await fetch(`http://localhost:5000/api/students/${editingUser._id}`, {
+          const res = await fetch(`/api/students/${editingUser._id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(updateData)
@@ -146,7 +156,7 @@ export default function UserManagement({ onHomeClick }) {
           }
         } else {
           // Create student
-          const res = await fetch("http://localhost:5000/api/students", {
+          const res = await fetch("/api/students", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(preparedData)
@@ -163,7 +173,7 @@ export default function UserManagement({ onHomeClick }) {
         if (editingUser) {
           // Update admin
           const { password, ...updateData } = preparedData;
-          const res = await fetch(`http://localhost:5000/api/admins/${editingUser._id}`, {
+          const res = await fetch(`/api/admins/${editingUser._id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(updateData)
@@ -175,7 +185,7 @@ export default function UserManagement({ onHomeClick }) {
           }
         } else {
           // Create admin
-          const res = await fetch("http://localhost:5000/api/admins", {
+          const res = await fetch("/api/admins", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ ...preparedData, role: "admin" })
@@ -191,7 +201,8 @@ export default function UserManagement({ onHomeClick }) {
       fetchUsers();
     } catch (err) {
       console.error("Error saving user:", err);
-      alert("Error saving user. Please try again.");
+      alert(`Error saving user: ${err.message}. Please try again.`);
+      return;
     }
   };
 
@@ -199,9 +210,9 @@ export default function UserManagement({ onHomeClick }) {
   const toggleStatus = async (id) => {
     try {
       if (activeTab === "students") {
-        await fetch(`http://localhost:5000/api/students/${id}/status`, { method: "PUT" });
+        await fetch(`/api/students/${id}/status`, { method: "PUT" });
       } else {
-        await fetch(`http://localhost:5000/api/admins/${id}/status`, { method: "PUT" });
+        await fetch(`/api/admins/${id}/status`, { method: "PUT" });
       }
       fetchUsers();
     } catch (err) {
@@ -214,9 +225,9 @@ export default function UserManagement({ onHomeClick }) {
     if (!window.confirm("Are you sure you want to delete this user?")) return;
     try {
       if (activeTab === "students") {
-        await fetch(`http://localhost:5000/api/students/${id}`, { method: "DELETE" });
+        await fetch(`/api/students/${id}`, { method: "DELETE" });
       } else {
-        await fetch(`http://localhost:5000/api/admins/${id}`, { method: "DELETE" });
+        await fetch(`/api/admins/${id}`, { method: "DELETE" });
       }
       fetchUsers();
     } catch (err) {
@@ -226,11 +237,11 @@ export default function UserManagement({ onHomeClick }) {
 
   return (
     <div className="user-management-page" style={{ position: 'relative', minHeight: '100vh' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginBottom: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginTop: 14, marginBottom: 44 }}>
         <button
           className="back-button"
           style={{
-            background: '#fff',
+            background: '#edebeb',
             color: '#1976d2',
             border: 'none',
             borderRadius: 6,
@@ -303,8 +314,6 @@ export default function UserManagement({ onHomeClick }) {
                   <th>Roll Number</th>
                   <th>Class</th>
                   <th>Board</th>
-                  <th>Score</th>
-                  <th>Tests</th>
                 </>
               ) : (
                 <th>Email</th>
@@ -328,12 +337,31 @@ export default function UserManagement({ onHomeClick }) {
                 students.map(student => (
                   <tr key={student._id}>
                     <td>{formatId(student._id)}</td>
-                    <td>{student.name}</td>
+                    <td>
+                      <span 
+                        style={{ color: '#1976d2', cursor: 'pointer', fontWeight: 600 }}
+                        onClick={() => {
+                          setSelectedStudent(student);
+                          // Fetch test records for this student
+                          setLoadingTestRecords(true);
+                          fetch(`/api/test-records/${student._id}`)
+                            .then(res => res.json())
+                            .then(data => {
+                              setTestRecords(data);
+                              setLoadingTestRecords(false);
+                            })
+                            .catch(err => {
+                              console.error("Error fetching test records:", err);
+                              setLoadingTestRecords(false);
+                            });
+                        }}
+                      >
+                        {student.name}
+                      </span>
+                    </td>
                     <td>{student.rollNumber}</td>
                     <td>{student.classId?.valueName || '-'}</td>
                     <td>{student.boardId?.valueName || '-'}</td>
-                    <td>{student.totalScore || 0}</td>
-                    <td>{student.testsTaken || 0}</td>
                     <td>
                       <span className={student.status === "Active" ? "status-active" : "status-inactive"}>
                         {student.status}
@@ -516,6 +544,59 @@ export default function UserManagement({ onHomeClick }) {
                 <button type="submit" className="cta-button">{editingUser ? "Update" : "Add"}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Test Records Popup */}
+      {selectedStudent && (
+        <div className="popup-overlay">
+          <div className="popup-form" style={{ maxWidth: 600 }}>
+            <div className="popup-header">
+              <span className="popup-title">
+                Test Records - {selectedStudent.name}
+              </span>
+              <button className="popup-close" onClick={() => setSelectedStudent(null)}>×</button>
+            </div>
+            <div className="popup-body" style={{ maxHeight: 400, overflowY: 'auto' }}>
+              {loadingTestRecords ? (
+                <p style={{ textAlign: 'center', padding: 20 }}>Loading test records...</p>
+              ) : testRecords.length === 0 ? (
+                <p style={{ textAlign: 'center', padding: 20, color: '#888' }}>No test records found for this student.</p>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#f5f5f5' }}>
+                      <th style={{ padding: 10, textAlign: 'left', borderBottom: '1px solid #ddd' }}>Date</th>
+                      <th style={{ padding: 10, textAlign: 'left', borderBottom: '1px solid #ddd' }}>Subject</th>
+                      <th style={{ padding: 10, textAlign: 'center', borderBottom: '1px solid #ddd' }}>Score</th>
+                      <th style={{ padding: 10, textAlign: 'center', borderBottom: '1px solid #ddd' }}>Correct</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {testRecords.map((record, index) => (
+                      <tr key={index} style={{ borderBottom: '1px solid #eee' }}>
+                        <td style={{ padding: 10 }}>
+                          {new Date(record.testDate).toLocaleDateString('en-GB', { 
+                            day: '2-digit', 
+                            month: 'short', 
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </td>
+                        <td style={{ padding: 10 }}>{record.subjectName || '-'}</td>
+                        <td style={{ padding: 10, textAlign: 'center' }}>{record.score}</td>
+                        <td style={{ padding: 10, textAlign: 'center' }}>{record.correctAnswers}/{record.totalQuestions}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            <div className="popup-actions">
+              <button type="button" className="cta-button" onClick={() => setSelectedStudent(null)}>Close</button>
+            </div>
           </div>
         </div>
       )}

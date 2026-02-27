@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import './App.css';
 
@@ -28,13 +27,39 @@ function Welcome({ onSignIn, onBack, onStudentSignIn, onAdminSignIn }) {
     }
   };
 
-  const handleStudentSignIn = (e) => {
+  const handleStudentSignIn = async (e) => {
     e.preventDefault();
     const dob = `${student.day}-${student.month}-${student.year}`;
-    setShowStudentForm(false);
-    setShowChoice(false);
-    if (onStudentSignIn) onStudentSignIn(student.name);
-    setStudent({ name: '', roll: '', day: '', month: '', year: '' });
+    
+    try {
+      const response = await fetch('http://localhost:5000/api/students/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: student.name,
+          rollNumber: student.roll,
+          dateOfBirth: dob
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Login successful
+        setShowStudentForm(false);
+        setShowChoice(false);
+        if (onStudentSignIn) onStudentSignIn(data.student.name, data.student);
+        setStudent({ name: '', roll: '', day: '', month: '', year: '' });
+      } else {
+        // Login failed - show error
+        alert(data.error || 'Invalid credentials or account is inactive');
+      }
+    } catch (err) {
+      alert('Error connecting to server. Please try again.');
+      console.error('Login error:', err);
+    }
   };
 
   const handleAdminSignIn = (e) => {
@@ -168,7 +193,6 @@ function Welcome({ onSignIn, onBack, onStudentSignIn, onAdminSignIn }) {
                       onChange={handleInputChange}
                       required
                       autoComplete="current-password"
-                      // ...existing code...
                     />
                     <button
                       type="button"

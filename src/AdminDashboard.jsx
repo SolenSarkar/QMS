@@ -4,6 +4,8 @@ import AttributeMaster from "./AttributeMaster";
 import AttributeValues from "./AttributeValues";
 import QuestionsPage from "./Questions";
 import UserManagement from "./UserManagement";
+import QuestionPapers from "./QuestionPapers";
+import SettingsPage from "./SettingsPage";
 
 export default function AdminDashboard({ onLogout }) {
   const [mainPage, setMainPage] = useState('dashboard');
@@ -112,9 +114,10 @@ export default function AdminDashboard({ onLogout }) {
           <ul>
             <li style={{fontWeight: mainPage === 'dashboard' ? 700 : 600, cursor:'pointer'}} onClick={() => setMainPage('dashboard')}>Dashboard</li>
             <li style={{fontWeight: mainPage === 'questions' ? 700 : 600, cursor:'pointer'}} onClick={() => setMainPage('questions')}>Questions</li>
+            <li style={{fontWeight: mainPage === 'question-papers' ? 700 : 600, cursor:'pointer'}} onClick={() => setMainPage('question-papers')}>Question Papers</li>
             <li style={{fontWeight: 600}}>Results</li>
-            <li style={{fontWeight: mainPage === 'user-management' ? 700 : 600, cursor:'pointer'}} onClick={() => setMainPage('user-management')}>Manage Users</li>
-            <li style={{fontWeight: 600}}>Settings</li>
+<li style={{fontWeight: mainPage === 'user-management' ? 700 : 600, cursor:'pointer'}} onClick={() => setMainPage('user-management')}>Manage Users</li>
+            <li style={{fontWeight: mainPage === 'settings' ? 700 : 600, cursor:'pointer'}} onClick={() => setMainPage('settings')}>Settings</li>
           </ul>
         </aside>
         <main className="admin-content">
@@ -143,8 +146,14 @@ export default function AdminDashboard({ onLogout }) {
           {mainPage === 'questions' && (
             <QuestionsPage onHomeClick={() => setMainPage('dashboard')} />
           )}
-          {mainPage === 'user-management' && (
+          {mainPage === 'question-papers' && (
+            <QuestionPapers onHomeClick={() => setMainPage('dashboard')} />
+          )}
+{mainPage === 'user-management' && (
             <UserManagement onHomeClick={() => setMainPage('dashboard')} />
+          )}
+          {mainPage === 'settings' && (
+            <SettingsPage onHomeClick={() => setMainPage('dashboard')} />
           )}
         </main>
       </div>

@@ -1,3 +1,29 @@
+/* User Management Page Styles */
+.user-management-page {
+  min-height: calc(100vh - 100px);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 24px 32px;
+  border-radius: 12px;
+  width: 100%;
+}
+
+.user-management-page h2 {
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 1.8em;
+  margin: 0;
+}
+
+/* Ensure admin content area shows properly */
+.admin-content {
+  flex: 1;
+  padding: 48px 32px;
+  color: #222;
+  background: #fff;
+  overflow-y: auto;
+  min-height: calc(100vh - 64px);
+}
+
 /* Questions subject tabs grid: 2 per row */
 .questions-subject-tabs-grid {
   background-color: #c2dbf3;

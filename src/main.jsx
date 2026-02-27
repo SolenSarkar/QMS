@@ -1,8 +1,5 @@
-
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-
-
 
 import App from './App';
 import Welcome from './Welcome';
@@ -60,14 +57,22 @@ function Root() {
   }
   if (page === 'welcome') {
     return <Welcome
-      onStudentSignIn={name => { setStudentName(name); setPage('student-welcome'); }}
+      onStudentSignIn={(name, studentData) => { 
+        setStudentName(name); 
+        // Store student data in localStorage for persistence
+        if (studentData) {
+          localStorage.setItem('qms_studentData', JSON.stringify(studentData));
+        }
+        setPage('student-welcome'); 
+      }}
       onAdminSignIn={email => { setAdminName(email); setPage('admin-dashboard'); }}
       onSignIn={() => {}}
       onBack={() => setPage('main')}
     />;
   }
-    if (page === 'admin-dashboard') {
-      return <>
+  if (page === 'admin-dashboard') {
+    return (
+      <>
         <AdminDashboard
           name={adminName}
           onLogout={() => {
@@ -81,16 +86,20 @@ function Root() {
           onHomeClick={() => setPage('admin-dashboard')}
         />
         <Footer />
-      </>;
-    }
-    if (page === 'admin-attribute-dashboard') {
-      return <>
+      </>
+    );
+  }
+  if (page === 'admin-attribute-dashboard') {
+    return (
+      <>
         <AdminAttributeDashboard onHomeClick={() => setPage('admin-dashboard')} onAttributeMasterClick={() => setPage('attribute-master')} />
         <Footer />
-      </>;
-    }
-    if (page === 'attribute-master') {
-      return <>
+      </>
+    );
+  }
+  if (page === 'attribute-master') {
+    return (
+      <>
         <AttributeMaster
           onHomeClick={() => setPage('admin-dashboard')}
           onLogout={() => {
@@ -101,32 +110,37 @@ function Root() {
           }}
         />
         <Footer />
-      </>;
-    }
+      </>
+    );
+  }
   if (page === 'student-welcome') {
-    return <>
-      <StudentWelcome name={studentName} onStart={() => setPage('student-dashboard')} onBack={() => setPage('welcome')} />
-      <Footer />
-    </>;
+    return (
+      <>
+        <StudentWelcome name={studentName} onStart={() => setPage('student-dashboard')} onBack={() => setPage('welcome')} />
+        <Footer />
+      </>
+    );
   }
   if (page === 'student-dashboard') {
-    return <>
-      <StudentDashboard name={studentName}
-        onProjectTitleClick={() => {
-          setPage('main');
-          setStudentName('');
-          localStorage.removeItem('qms_page');
-          localStorage.removeItem('qms_studentName');
-        }}
-        onLogout={() => {
-          setPage('welcome');
-          setStudentName('');
-          localStorage.removeItem('qms_page');
-          localStorage.removeItem('qms_studentName');
-        }}
-      />
-      <Footer />
-    </>;
+    return (
+      <>
+        <StudentDashboard name={studentName}
+          onProjectTitleClick={() => {
+            setPage('main');
+            setStudentName('');
+            localStorage.removeItem('qms_page');
+            localStorage.removeItem('qms_studentName');
+          }}
+          onLogout={() => {
+            setPage('welcome');
+            setStudentName('');
+            localStorage.removeItem('qms_page');
+            localStorage.removeItem('qms_studentName');
+          }}
+        />
+        <Footer />
+      </>
+    );
   }
   return null;
 }

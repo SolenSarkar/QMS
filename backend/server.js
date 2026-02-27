@@ -16,7 +16,7 @@ const attributeSchema = new mongoose.Schema({
 });
 const Attribute = mongoose.model('Attribute', attributeSchema);
 
-// Value schema (add subjectId for topic dependency, classId, and stream for class 11/12 subjects)
+// Value schema (add subjectId for topic dependency, classId, stream, and passkey)
 const valueSchema = new mongoose.Schema({
   attributeId: mongoose.Schema.Types.ObjectId,
   valueName: String,
@@ -32,6 +32,11 @@ const valueSchema = new mongoose.Schema({
   stream: {
     type: String,
     required: false
+  },
+  passkey: {
+    type: String,
+    required: false,
+    default: ''
   }
 });
 const AttributeValue = mongoose.model('AttributeValue', valueSchema);
@@ -81,7 +86,10 @@ app.post('/api/values', async (req, res) => {
   res.json(value);
 });
 app.put('/api/values/:id', async (req, res) => {
+  console.log('PUT /api/values/:id - params:', req.params.id);
+  console.log('PUT /api/values/:id - body:', req.body);
   const value = await AttributeValue.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  console.log('PUT /api/values/:id - result:', value);
   res.json(value);
 });
 app.delete('/api/values/:id', async (req, res) => {
@@ -152,6 +160,17 @@ const studentSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 const Student = mongoose.model('Student', studentSchema);
+
+// Test Record Schema (for storing test history with dates)
+const testRecordSchema = new mongoose.Schema({
+  studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
+  score: { type: Number, required: true },
+  totalQuestions: { type: Number, required: true },
+  correctAnswers: { type: Number, required: true },
+  subjectName: { type: String },
+  testDate: { type: Date, default: Date.now }
+});
+const TestRecord = mongoose.model('TestRecord', testRecordSchema);
 
 // ==================== ADMIN APIs ====================
 
@@ -424,6 +443,49 @@ app.get('/api/students/board/:boardId', async (req, res) => {
     res.json(students);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ==================== TEST RECORDS APIs ====================
+
+// Get test records for a student
+app.get('/api/test-records/:studentId', async (req, res) => {
+  try {
+    const records = await TestRecord.find({ studentId: req.params.studentId })
+      .sort({ testDate: -1 }); // Most recent first
+    res.json(records);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Create a new test record
+app.post('/api/test-records', async (req, res) => {
+  try {
+    const { studentId, score, totalQuestions, correctAnswers, subjectName } = req.body;
+    
+    // Create the test record
+    const testRecord = new TestRecord({
+      studentId,
+      score,
+      totalQuestions,
+      correctAnswers,
+      subjectName,
+      testDate: new Date()
+    });
+    await testRecord.save();
+    
+    // Update student's total score and tests taken
+    const student = await Student.findById(studentId);
+    if (student) {
+      student.totalScore += score;
+      student.testsTaken += 1;
+      await student.save();
+    }
+    
+    res.status(201).json(testRecord);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 });
 

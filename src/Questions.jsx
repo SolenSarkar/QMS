@@ -1,33 +1,34 @@
-  // TopicsSection: shows topics for selected subject
-  function TopicsSection({ subjectId, topics }) {
-    const filteredTopics = topics.filter(t => t.subjectId === subjectId);
-    return (
-      <div style={{ margin: '24px 0', background: '#f5f8ff', borderRadius: 10, padding: 18, boxShadow: '0 2px 8px rgba(60,60,120,0.06)' }}>
-        <h3 style={{ color: '#333', fontWeight: 700, marginBottom: 12 }}>Topics for Selected Subject</h3>
-        {filteredTopics.length === 0 ? (
-          <div style={{ color: '#888', fontStyle: 'italic' }}>No topics found for this subject.</div>
-        ) : (
-          <ul style={{ paddingLeft: 18, margin: 0 }}>
-            {filteredTopics.map(topic => (
-              <li key={topic._id} style={{ marginBottom: 8, fontWeight: 500, color: '#222' }}>{topic.valueName}</li>
-            ))}
-          </ul>
-        )}
-      </div>
-    );
-  }
-  // Format value id similar to attribute id
-  const formatId = (id) => {
-    if (typeof id === 'number') {
-      return `VAL${id.toString().padStart(3, '0')}`;
-    }
-    if (typeof id === 'string' && id.length >= 6) {
-      return `VAL${id.slice(-6).toUpperCase()}`;
-    }
-    return id;
-  };
-
 import React, { useState, useEffect, useRef } from "react";
+
+// TopicsSection: shows topics for selected subject
+function TopicsSection({ subjectId, topics }) {
+  const filteredTopics = topics.filter(t => t.subjectId === subjectId);
+  return (
+    <div style={{ margin: '24px 0', background: '#f5f8ff', borderRadius: 10, padding: 18, boxShadow: '0 2px 8px rgba(60,60,120,0.06)' }}>
+      <h3 style={{ color: '#333', fontWeight: 700, marginBottom: 12 }}>Topics for Selected Subject</h3>
+      {filteredTopics.length === 0 ? (
+        <div style={{ color: '#888', fontStyle: 'italic' }}>No topics found for this subject.</div>
+      ) : (
+        <ul style={{ paddingLeft: 18, margin: 0 }}>
+          {filteredTopics.map(topic => (
+            <li key={topic._id} style={{ marginBottom: 8, fontWeight: 500, color: '#222' }}>{topic.valueName}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// Format value id similar to attribute id
+const formatId = (id) => {
+  if (typeof id === 'number') {
+    return `VAL${id.toString().padStart(3, '0')}`;
+  }
+  if (typeof id === 'string' && id.length >= 6) {
+    return `VAL${id.slice(-6).toUpperCase()}`;
+  }
+  return id;
+};
 
 function PasskeyPopup({
   pendingSubject,
@@ -120,11 +121,11 @@ const [subjectViewMode, setSubjectViewMode] = useState("grid");
   const [enteredPasskey, setEnteredPasskey] = useState("");
   const [passkeyError, setPasskeyError] = useState("");
   const [unlockedSubjects, setUnlockedSubjects] = useState([]);
-  const subjectPasskeys = {
-  "Math": "math123",
-  "Science": "sci123",
-  "English": "eng123"
-};
+  
+  // Store all subjects to determine which classes have subjects
+  const [allSubjects, setAllSubjects] = useState([]);
+  
+// Passkeys are now stored in the database - using pendingSubject.passkey
 
   // Fetch boards, classes, subjects, topics from backend (assuming attribute values)
   useEffect(() => {
@@ -141,7 +142,15 @@ const [subjectViewMode, setSubjectViewMode] = useState("grid");
         if (classAttr) {
           fetch(`http://localhost:5000/api/values/${classAttr._id}`)
             .then(res => res.json())
-            .then(setClasses);
+            .then(data => setClasses(data.filter(v => v.status === 'Active')));
+        }
+        const subjectAttr = attrs.find(a => a.name.toLowerCase() === "subject");
+        if (subjectAttr) {
+          fetch(`http://localhost:5000/api/values/${subjectAttr._id}`)
+            .then(res => res.json())
+            .then(data => {
+              setAllSubjects(data);
+            });
         }
         const topicAttr = attrs.find(a => a.name.toLowerCase() === "topic");
         if (topicAttr) {
@@ -169,8 +178,11 @@ const [subjectViewMode, setSubjectViewMode] = useState("grid");
           fetch(`http://localhost:5000/api/values/${subjectAttr._id}`)
             .then(res => res.json())
             .then(subjectsList => {
-              // Show all subjects if none are linked to the class
-              const filtered = subjectsList.filter(s => s.classId === selectedClass);
+              // Filter subjects that match the selected class OR have no classId (universal subjects)
+              const filtered = subjectsList.filter(s => {
+                if (!s.classId) return true; // Show subjects without classId
+                return s.classId.toString() === selectedClass.toString();
+              });
               let newSubjects = filtered.length > 0 ? filtered : subjectsList;
               // Only update if changed
               if (JSON.stringify(subjects) !== JSON.stringify(newSubjects)) setSubjects(newSubjects);
@@ -279,7 +291,17 @@ const handleSubjectClick = (subject) => {
 const verifyPasskey = () => {
   if (!pendingSubject) return;
 
-  const correctKey = subjectPasskeys[pendingSubject.valueName];
+  // Get passkey from database (subject.passkey field)
+  const correctKey = pendingSubject.passkey || "";
+
+  // If no passkey is set in database, allow access
+  if (!correctKey) {
+    setUnlockedSubjects(prev => [...prev, pendingSubject._id]);
+    setActiveTab(pendingSubject._id);
+    setShowPasskeyPopup(false);
+    setSubjectViewMode("dropdown");
+    return;
+  }
 
   if (enteredPasskey === correctKey) {
     setUnlockedSubjects(prev => [...prev, pendingSubject._id]);
@@ -320,7 +342,10 @@ const verifyPasskey = () => {
             fetch(`http://localhost:5000/api/values/${subjectAttr._id}`)
               .then(res => res.json())
               .then(subjectsList => {
-                const filtered = subjectsList.filter(s => s.classId === localClass);
+                const filtered = subjectsList.filter(s => {
+                  if (!s.classId) return true; // Show subjects without classId
+                  return s.classId.toString() === localClass.toString();
+                });
                 let newSubjects = filtered.length > 0 ? filtered : subjectsList;
                 setLocalSubjects(newSubjects);
                 setLocalSubject(newSubjects[0]?._id || "");
@@ -476,6 +501,9 @@ const verifyPasskey = () => {
     );
   };
 
+  // Show all classes from database
+  const filteredClasses = classes;
+
   return (
     <div className="questions-page" style={{ backgroundColor: '#507ced'}}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 18, marginBottom: 24, backgroundColor: '#f0f0f0', padding: 12, borderRadius: 8 }}>
@@ -492,7 +520,7 @@ const verifyPasskey = () => {
           onChange={e => setSelectedClass(e.target.value)}
         >
           <option value="">Select Class</option>
-          {classes.map(cls => (
+          {filteredClasses.map(cls => (
             <option key={cls._id} value={cls._id}>{cls.valueName}</option>
           ))}
         </select>
@@ -539,13 +567,13 @@ const verifyPasskey = () => {
     <select
       value={activeTab}
       onChange={(e) => {
-    const selected = subjects.find(
-      sub => sub._id === e.target.value
-    );
-    if (selected) {
-      handleSubjectClick(selected);
-    }
-  }}
+        const selected = subjects.find(
+          sub => sub._id === e.target.value
+        );
+        if (selected) {
+          handleSubjectClick(selected);
+        }
+      }}
       style={{
         padding: 8,
         borderRadius: 6,

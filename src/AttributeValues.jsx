@@ -116,7 +116,7 @@ const AttributeValues = ({ onHomeClick }) => {
       alert("Please specify the stream name.");
       return;
     }
-    const payload = {
+const payload = {
       attributeId: selectedAttribute,
       valueName: newValue,
       status: newStatus,
@@ -126,6 +126,10 @@ const AttributeValues = ({ onHomeClick }) => {
       if (isClass11or12) {
         payload.stream = selectedStream === "other" ? customStream.trim() : selectedStream;
       }
+    }
+    // If Topic, link to the selected subject
+    if (attr && attr.name.toLowerCase() === "topic" && selectedClass) {
+      payload.subjectId = selectedClass;
     }
     fetch("http://localhost:5000/api/values", {
       method: "POST",
