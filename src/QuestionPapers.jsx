@@ -66,37 +66,26 @@ export default function QuestionPapers({ onHomeClick }) {
   // Filter subjects when class is selected
   useEffect(() => {
     if (!selectedClass) {
-      // If no class selected, show all subjects
       setSubjects(allSubjects);
     } else {
-      // Filter subjects that are linked to the selected class
       const filteredSubjects = allSubjects.filter(subject => {
-        // Show subjects that either:
-        // 1. Have no classId (universal subjects for all classes)
-        // 2. Have a classId that matches the selected class
         const subjectClassId = subject.classId;
-        
-        // If no classId is set, show the subject (it's a general subject)
         if (!subjectClassId) return true;
         
-        // Handle different types of classId (string, ObjectId, or populated object)
         let subjectClassIdStr;
         if (typeof subjectClassId === 'string') {
           subjectClassIdStr = subjectClassId;
         } else if (subjectClassId && typeof subjectClassId === 'object') {
-          // If it's an ObjectId object with _id property
           subjectClassIdStr = subjectClassId._id ? subjectClassId._id.toString() : null;
         } else {
           subjectClassIdStr = null;
         }
         
         const selectedClassIdStr = selectedClass.toString();
-        
         return subjectClassIdStr === selectedClassIdStr;
       });
       setSubjects(filteredSubjects);
     }
-    // Reset subject selection when class changes
     setSelectedSubject("");
     setAvailableQuestions([]);
     setSelectedQuestions([]);
@@ -167,6 +156,280 @@ export default function QuestionPapers({ onHomeClick }) {
   // Get filtered classes
   const filteredClasses = getAllClasses();
 
+  // View mode toggle buttons
+  const toggleButtonsStyle = {
+    display: 'flex',
+    gap: '12px',
+    marginBottom: '24px'
+  };
+  
+  const toggleButtonStyle = (isActive) => ({
+    padding: '10px 24px',
+    borderRadius: '8px',
+    border: 'none',
+    fontSize: '1em',
+    fontWeight: 600,
+    cursor: 'pointer',
+    background: isActive ? '#1976d2' : '#e0e0e0',
+    color: isActive ? '#fff' : '#333'
+  });
+
+  // State for managing saved question papers
+  const [savedPapers, setSavedPapers] = useState([]);
+  const [viewMode, setViewMode] = useState('create'); // 'create', 'manage', or 'permit'
+  const [selectedSavedPaper, setSelectedSavedPaper] = useState(null);
+  const [loadingSavedPapers, setLoadingSavedPapers] = useState(false);
+
+  // Fetch saved question papers
+  const fetchSavedPapers = async () => {
+    setLoadingSavedPapers(true);
+    try {
+      const response = await fetch('/api/question-papers');
+      if (response.ok) {
+        const data = await response.json();
+        setSavedPapers(data);
+      }
+    } catch (err) {
+      console.error('Error fetching saved papers:', err);
+    }
+    setLoadingSavedPapers(false);
+  };
+
+  // Load saved papers when switching to manage or permit mode
+  useEffect(() => {
+    if (viewMode === 'manage' || viewMode === 'permit') {
+      fetchSavedPapers();
+    }
+  }, [viewMode]);
+
+  // Delete a question paper
+  const deletePaper = async (paperId) => {
+    if (!window.confirm('Are you sure you want to delete this question paper?')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/question-papers/${paperId}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        alert('Question paper deleted successfully!');
+        fetchSavedPapers();
+        setSelectedSavedPaper(null);
+      } else {
+        const result = await response.json();
+        alert(`Failed to delete: ${result.error || 'Unknown error'}`);
+      }
+    } catch (err) {
+      console.error('Error deleting paper:', err);
+      alert('Error deleting question paper');
+    }
+  };
+
+  // Download question paper as PDF
+  const downloadAsPDF = () => {
+    const printContent = document.getElementById('question-paper-print-content');
+    if (!printContent) return;
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Please allow popups to download the PDF');
+      return;
+    }
+    
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${generatedPaper.subject} - Question Paper</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            padding: 40px; 
+            font-size: 14px;
+            line-height: 1.6;
+          }
+          .header { 
+            text-align: center; 
+            margin-bottom: 30px; 
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+          }
+          .header h1 { 
+            font-size: 24px; 
+            margin-bottom: 10px; 
+            color: #1a237e;
+          }
+          .info { 
+            display: flex; 
+            justify-content: space-between; 
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            font-size: 13px;
+          }
+          .info-item { margin: 4px 0; }
+          .info-item strong { color: #333; }
+          .questions { margin-top: 20px; }
+          .question { 
+            margin-bottom: 20px; 
+            page-break-inside: avoid;
+          }
+          .question-header { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 8px;
+          }
+          .question-text { font-weight: 500; }
+          .question-marks { 
+            font-weight: 600; 
+            color: #1976d2;
+          }
+          .options { 
+            margin-left: 20px; 
+            margin-top: 8px;
+          }
+          .option { margin: 4px 0; }
+          .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            border-top: 1px solid #ddd;
+            padding-top: 20px;
+          }
+          @media print {
+            body { padding: 20px; }
+            .question { page-break-inside: avoid; }
+          }
+        </style>
+      </head>
+      <body>
+        ${printContent.innerHTML}
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 250);
+  };
+
+  // Save question paper to database
+  const saveQuestionPaper = async () => {
+    try {
+      const paperData = {
+        board: generatedPaper.board,
+        boardId: selectedBoard,
+        class: generatedPaper.class,
+        classId: selectedClass,
+        subject: generatedPaper.subject,
+        subjectId: selectedSubject,
+        difficulty: generatedPaper.difficulty,
+        totalMarks: generatedPaper.totalMarks,
+        totalQuestions: generatedPaper.questions.length,
+        questions: generatedPaper.questions,
+        createdAt: new Date().toISOString()
+      };
+      
+      console.log('Saving question paper with data:', paperData);
+      console.log('Making request to /api/question-papers');
+      
+      const response = await fetch('/api/question-papers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(paperData)
+      });
+      
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers.get('content-type'));
+      
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('Non-JSON response:', text);
+        alert(`Failed to save question paper. Server returned status ${response.status}. Please check if the backend server is running.`);
+        setShowPreview(false);
+        return;
+      }
+      
+      const result = await response.json();
+      console.log('Save response:', response.status, result);
+      
+      if (response.ok) {
+        alert('Question paper saved successfully!');
+      } else {
+        alert(`Failed to save question paper: ${result.error || 'Unknown error'}`);
+      }
+    } catch (err) {
+      console.error('Error saving question paper:', err);
+      alert(`Error saving question paper: ${err.message}. Please check if the backend server is running on port 5000.`);
+    }
+    setShowPreview(false);
+  };
+
+  // Permit functionality - state
+  const [permitPaper, setPermitPaper] = useState(null);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [timeLimit, setTimeLimit] = useState(60); // default 60 minutes
+
+  // Save permit settings
+  const savePermit = async () => {
+    if (!permitPaper) {
+      alert('Please select a question paper to permit');
+      return;
+    }
+    if (!startDate || !endDate) {
+      alert('Please select both start and end dates');
+      return;
+    }
+    if (new Date(startDate) >= new Date(endDate)) {
+      alert('End date must be after start date');
+      return;
+    }
+    if (timeLimit <= 0) {
+      alert('Please enter a valid time limit');
+      return;
+    }
+
+    try {
+      const permitData = {
+        questionPaperId: permitPaper._id,
+        startDate: startDate,
+        endDate: endDate,
+        timeLimit: timeLimit,
+        createdAt: new Date().toISOString()
+      };
+
+      console.log('Saving permit with data:', permitData);
+      
+      const response = await fetch('/api/question-paper-permits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(permitData)
+      });
+
+      if (response.ok) {
+        alert('Permit saved successfully! Students can now access this question paper during the specified time.');
+        // Reset form
+        setPermitPaper(null);
+        setStartDate("");
+        setEndDate("");
+        setTimeLimit(60);
+      } else {
+        const result = await response.json();
+        alert(`Failed to save permit: ${result.error || 'Unknown error'}`);
+      }
+    } catch (err) {
+      console.error('Error saving permit:', err);
+      alert(`Error saving permit: ${err.message}`);
+    }
+  };
+
   return (
     <div className="question-papers-page" style={{ position: 'relative', minHeight: '100vh' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginTop: 24, marginBottom: 24 }}>
@@ -193,88 +456,31 @@ export default function QuestionPapers({ onHomeClick }) {
         <h2 style={{ color: '#ffffff', fontWeight: '800', fontSize: '1.8em', margin: 0 }}>Question Papers</h2>
       </div>
 
-      {/* Filters Section */}
-      <div style={{ 
-        background: '#fff', 
-        borderRadius: 12, 
-        padding: 24, 
-        marginBottom: 24,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-      }}>
-        <h3 style={{ marginTop: 0, marginBottom: 16, color: '#333' }}>Select Parameters</h3>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
-          {/* Board Selection */}
-          <div>
-            <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Board</label>
-            <select
-              value={selectedBoard}
-              onChange={(e) => setSelectedBoard(e.target.value)}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1.5px solid #bfc8e0', fontSize: '1em' }}
-            >
-              <option value="">Select Board</option>
-              {boards.map(board => (
-                <option key={board._id} value={board._id}>{board.valueName}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Class Selection - Filtered to only show classes with subjects */}
-          <div>
-            <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Class</label>
-            <select
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1.5px solid #bfc8e0', fontSize: '1em' }}
-            >
-              <option value="">Select Class</option>
-              {filteredClasses.map(cls => (
-                <option key={cls._id} value={cls._id}>{cls.valueName}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Subject Selection - Filtered by Class */}
-          <div>
-            <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Subject</label>
-            <select
-              value={selectedSubject}
-              onChange={(e) => setSelectedSubject(e.target.value)}
-              disabled={!selectedClass}
-              style={{ 
-                width: '100%', 
-                padding: '10px 12px', 
-                borderRadius: 8, 
-                border: '1.5px solid #bfc8e0', 
-                fontSize: '1em',
-                opacity: !selectedClass ? 0.5 : 1
-              }}
-            >
-              <option value="">{selectedClass ? "Select Subject" : "Select Class First"}</option>
-              {subjects.map(sub => (
-                <option key={sub._id} value={sub._id}>{sub.valueName}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Difficulty Level */}
-          <div>
-            <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Difficulty Level</label>
-            <select
-              value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value)}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1.5px solid #bfc8e0', fontSize: '1em' }}
-            >
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
-            </select>
-          </div>
-        </div>
+      {/* View Mode Toggle */}
+      <div style={toggleButtonsStyle}>
+        <button
+          style={toggleButtonStyle(viewMode === 'create')}
+          onClick={() => setViewMode('create')}
+        >
+          Create New
+        </button>
+        <button
+          style={toggleButtonStyle(viewMode === 'manage')}
+          onClick={() => setViewMode('manage')}
+        >
+          Manage Saved Papers
+        </button>
+        <button
+          style={toggleButtonStyle(viewMode === 'permit')}
+          onClick={() => setViewMode('permit')}
+        >
+          Permit
+        </button>
       </div>
 
-      {/* Questions Selection Section */}
-      {selectedSubject && (
+      {/* Create New Question Paper View */}
+      {viewMode === 'create' && (
+        <div>
         <div style={{ 
           background: '#fff', 
           borderRadius: 12, 
@@ -282,73 +488,367 @@ export default function QuestionPapers({ onHomeClick }) {
           marginBottom: 24,
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h3 style={{ marginTop: 0, color: '#333' }}>Select Questions</h3>
-            <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-              <span style={{ fontWeight: 600 }}>
-                Selected: {selectedQuestions.length} questions | Total Marks: {calculateTotalMarks()}
-              </span>
-              <button
-                className="cta-button"
-                onClick={generatePaper}
-                disabled={selectedQuestions.length === 0}
-                style={{ opacity: selectedQuestions.length === 0 ? 0.5 : 1 }}
+          <h3 style={{ marginTop: 0, marginBottom: 16, color: '#333' }}>Select Parameters</h3>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Board</label>
+              <select
+                value={selectedBoard}
+                onChange={(e) => setSelectedBoard(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1.5px solid #bfc8e0', fontSize: '1em' }}
               >
-                Generate Paper
-              </button>
+                <option value="">Select Board</option>
+                {boards.map(board => (
+                  <option key={board._id} value={board._id}>{board.valueName}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Class</label>
+              <select
+                value={selectedClass}
+                onChange={(e) => setSelectedClass(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1.5px solid #bfc8e0', fontSize: '1em' }}
+              >
+                <option value="">Select Class</option>
+                {filteredClasses.map(cls => (
+                  <option key={cls._id} value={cls._id}>{cls.valueName}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Subject</label>
+              <select
+                value={selectedSubject}
+                onChange={(e) => setSelectedSubject(e.target.value)}
+                disabled={!selectedClass}
+                style={{ 
+                  width: '100%', 
+                  padding: '10px 12px', 
+                  borderRadius: 8, 
+                  border: '1.5px solid #bfc8e0', 
+                  fontSize: '1em',
+                  opacity: !selectedClass ? 0.5 : 1
+                }}
+              >
+                <option value="">{selectedClass ? "Select Subject" : "Select Class First"}</option>
+                {subjects.map(sub => (
+                  <option key={sub._id} value={sub._id}>{sub.valueName}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Difficulty Level</label>
+              <select
+                value={difficulty}
+                onChange={(e) => setDifficulty(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1.5px solid #bfc8e0', fontSize: '1em' }}
+              >
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
             </div>
           </div>
+        </div>
 
-          {loadingQuestions ? (
-            <p style={{ textAlign: 'center', padding: 20 }}>Loading questions...</p>
-          ) : availableQuestions.length === 0 ? (
+        {selectedSubject && (
+          <div style={{ 
+            background: '#fff', 
+            borderRadius: 12, 
+            padding: 24, 
+            marginBottom: 24,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ marginTop: 0, color: '#333' }}>Select Questions</h3>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                <span style={{ fontWeight: 600 }}>
+                  Selected: {selectedQuestions.length} questions | Total Marks: {calculateTotalMarks()}
+                </span>
+                <button
+                  className="cta-button"
+                  onClick={generatePaper}
+                  disabled={selectedQuestions.length === 0}
+                  style={{ opacity: selectedQuestions.length === 0 ? 0.5 : 1 }}
+                >
+                  Generate Paper
+                </button>
+              </div>
+            </div>
+
+            {loadingQuestions ? (
+              <p style={{ textAlign: 'center', padding: 20 }}>Loading questions...</p>
+            ) : availableQuestions.length === 0 ? (
+              <p style={{ textAlign: 'center', padding: 20, color: '#888' }}>
+                No questions available for the selected subject.
+              </p>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
+                {marksOptions.map(marks => (
+                  <div key={marks} style={{ 
+                    border: '1px solid #e0e0e0', 
+                    borderRadius: 8, 
+                    padding: 16,
+                    background: '#f9f9f9'
+                  }}>
+                    <h4 style={{ marginTop: 0, marginBottom: 12, color: '#1976d2' }}>
+                      {marks} Mark{marks > 1 ? 's' : ''} Questions ({questionsByMarks[marks].length})
+                    </h4>
+                    <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+                      {questionsByMarks[marks].map(q => {
+                        const isSelected = selectedQuestions.some(sq => sq._id === q._id);
+                        return (
+                          <div 
+                            key={q._id}
+                            onClick={() => toggleQuestion(q)}
+                            style={{
+                              padding: '8px 12px',
+                              marginBottom: 8,
+                              borderRadius: 6,
+                              border: isSelected ? '2px solid #4c6fff' : '1px solid #ddd',
+                              background: isSelected ? '#e8edff' : '#fff',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center'
+                            }}
+                          >
+                            <span style={{ fontSize: '0.9em' }}>{q.text?.substring(0, 50)}...</span>
+                            <input 
+                              type="checkbox" 
+                              checked={isSelected} 
+                              onChange={() => toggleQuestion(q)}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        </div>
+      )}
+
+      {/* Manage Saved Question Papers View */}
+      {viewMode === 'manage' && (
+        <div style={{ 
+          background: '#fff', 
+          borderRadius: 12, 
+          padding: 24,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+        }}>
+          <h3 style={{ marginTop: 0, marginBottom: 16, color: '#333' }}>Saved Question Papers</h3>
+          
+          {loadingSavedPapers ? (
+            <p style={{ textAlign: 'center', padding: 20 }}>Loading saved papers...</p>
+          ) : savedPapers.length === 0 ? (
             <p style={{ textAlign: 'center', padding: 20, color: '#888' }}>
-              No questions available for the selected subject.
+              No saved question papers found.
             </p>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
-              {marksOptions.map(marks => (
-                <div key={marks} style={{ 
-                  border: '1px solid #e0e0e0', 
-                  borderRadius: 8, 
-                  padding: 16,
-                  background: '#f9f9f9'
-                }}>
-                  <h4 style={{ marginTop: 0, marginBottom: 12, color: '#1976d2' }}>
-                    {marks} Mark{marks > 1 ? 's' : ''} Questions ({questionsByMarks[marks].length})
-                  </h4>
-                  <div style={{ maxHeight: 200, overflowY: 'auto' }}>
-                    {questionsByMarks[marks].map(q => {
-                      const isSelected = selectedQuestions.some(sq => sq._id === q._id);
-                      const topic = topics.find(t => t._id === q.topicId);
-                      return (
-                        <div 
-                          key={q._id}
-                          onClick={() => toggleQuestion(q)}
-                          style={{
-                            padding: '8px 12px',
-                            marginBottom: 8,
-                            borderRadius: 6,
-                            border: isSelected ? '2px solid #4c6fff' : '1px solid #ddd',
-                            background: isSelected ? '#e8edff' : '#fff',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center'
-                          }}
-                        >
-                          <span style={{ fontSize: '0.9em' }}>{q.text?.substring(0, 50)}...</span>
-                          <input 
-                            type="checkbox" 
-                            checked={isSelected} 
-                            onChange={() => toggleQuestion(q)}
-                          />
-                        </div>
-                      );
-                    })}
+            <div style={{ display: 'grid', gap: 16 }}>
+              {savedPapers.map(paper => (
+                <div 
+                  key={paper._id}
+                  style={{ 
+                    border: '1px solid #e0e0e0', 
+                    borderRadius: 8, 
+                    padding: 16,
+                    background: '#f9f9f9'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <h4 style={{ margin: '0 0 8px 0', color: '#1976d2' }}>
+                        {paper.subject} - {paper.class}
+                      </h4>
+                      <p style={{ margin: '4px 0', fontSize: '0.9em' }}>
+                        <strong>Board:</strong> {paper.board} | 
+                        <strong> Difficulty:</strong> {paper.difficulty} |
+                        <strong> Questions:</strong> {paper.totalQuestions} |
+                        <strong> Marks:</strong> {paper.totalMarks}
+                      </p>
+                      <p style={{ margin: '4px 0', fontSize: '0.8em', color: '#666' }}>
+                        Created: {new Date(paper.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button 
+                        className="cta-button"
+                        onClick={() => {
+                          setSelectedSavedPaper(paper);
+                          setGeneratedPaper(paper);
+                          setShowPreview(true);
+                        }}
+                        style={{ padding: '8px 16px', fontSize: '0.9em' }}
+                      >
+                        View
+                      </button>
+                      <button 
+                        className="cta-button"
+                        onClick={() => deletePaper(paper._id)}
+                        style={{ padding: '8px 16px', fontSize: '0.9em', background: '#d32f2f' }}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Permit Question Papers View */}
+      {viewMode === 'permit' && (
+        <div style={{ 
+          background: '#fff', 
+          borderRadius: 12, 
+          padding: 24,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+        }}>
+          <h3 style={{ marginTop: 0, marginBottom: 16, color: '#333' }}>Permit Question Papers for Students</h3>
+          <p style={{ marginBottom: 24, color: '#666' }}>
+            Select a question paper and set the date range and time limit for students to access and solve the paper.
+          </p>
+          
+          {loadingSavedPapers ? (
+            <p style={{ textAlign: 'center', padding: 20 }}>Loading saved papers...</p>
+          ) : savedPapers.length === 0 ? (
+            <p style={{ textAlign: 'center', padding: 20, color: '#888' }}>
+              No saved question papers found. Create and save a question paper first.
+            </p>
+          ) : (
+            <div>
+              {/* Select Paper */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, fontSize: '1.1em' }}>Select Question Paper:</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+                  {savedPapers.map(paper => (
+                    <div 
+                      key={paper._id}
+                      onClick={() => setPermitPaper(paper)}
+                      style={{ 
+                        border: permitPaper?._id === paper._id ? '2px solid #1976d2' : '1px solid #e0e0e0',
+                        borderRadius: 8, 
+                        padding: 16,
+                        background: permitPaper?._id === paper._id ? '#e3f2fd' : '#f9f9f9',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <h4 style={{ margin: '0 0 8px 0', color: '#1976d2', fontSize: '1em' }}>
+                        {paper.subject} - {paper.class}
+                      </h4>
+                      <p style={{ margin: '4px 0', fontSize: '0.85em', color: '#666' }}>
+                        <strong>Board:</strong> {paper.board} | 
+                        <strong> Questions:</strong> {paper.totalQuestions} |
+                        <strong> Marks:</strong> {paper.totalMarks}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Permit Settings */}
+              {permitPaper && (
+                <div style={{ 
+                  border: '2px solid #4caf50', 
+                  borderRadius: 12, 
+                  padding: 24,
+                  background: '#f1f8e9'
+                }}>
+                  <h4 style={{ marginTop: 0, marginBottom: 16, color: '#2e7d32', fontSize: '1.2em' }}>
+                    Permit Settings for: {permitPaper.subject} - {permitPaper.class}
+                  </h4>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>
+                    {/* Start Date */}
+                    <div>
+                      <label style={{ display: 'block', marginBottom: 8, fontWeight: 600 }}>Start Date & Time:</label>
+                      <input 
+                        type="datetime-local" 
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        style={{ 
+                          width: '100%', 
+                          padding: '10px 12px', 
+                          borderRadius: 8, 
+                          border: '1.5px solid #bfc8e0', 
+                          fontSize: '1em'
+                        }}
+                      />
+                      <p style={{ marginTop: 4, fontSize: '0.8em', color: '#666' }}>When students can start accessing the paper</p>
+                    </div>
+
+                    {/* End Date */}
+                    <div>
+                      <label style={{ display: 'block', marginBottom: 8, fontWeight: 600 }}>End Date & Time:</label>
+                      <input 
+                        type="datetime-local" 
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        style={{ 
+                          width: '100%', 
+                          padding: '10px 12px', 
+                          borderRadius: 8, 
+                          border: '1.5px solid #bfc8e0', 
+                          fontSize: '1em'
+                        }}
+                      />
+                      <p style={{ marginTop: 4, fontSize: '0.8em', color: '#666' }}>When student access will be blocked</p>
+                    </div>
+
+                    {/* Time Limit */}
+                    <div>
+                      <label style={{ display: 'block', marginBottom: 8, fontWeight: 600 }}>Time Limit (minutes):</label>
+                      <input 
+                        type="number" 
+                        value={timeLimit}
+                        onChange={(e) => setTimeLimit(parseInt(e.target.value) || 0)}
+                        min="1"
+                        style={{ 
+                          width: '100%', 
+                          padding: '10px 12px', 
+                          borderRadius: 8, 
+                          border: '1.5px solid #bfc8e0', 
+                          fontSize: '1em'
+                        }}
+                      />
+                      <p style={{ marginTop: 4, fontSize: '0.8em', color: '#666' }}>Duration to complete the paper</p>
+                    </div>
+                  </div>
+
+                  {/* Save Button */}
+                  <div style={{ marginTop: 24, textAlign: 'center' }}>
+                    <button 
+                      onClick={savePermit}
+                      style={{
+                        background: '#4caf50',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 8,
+                        padding: '12px 32px',
+                        fontSize: '1.1em',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(76, 175, 80, 0.3)'
+                      }}
+                    >
+                      Save Permit
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -360,9 +860,30 @@ export default function QuestionPapers({ onHomeClick }) {
           <div className="popup-form" style={{ maxWidth: 700, maxHeight: '80vh', overflow: 'auto' }}>
             <div className="popup-header">
               <span className="popup-title">Question Paper Preview</span>
-              <button className="popup-close" onClick={() => setShowPreview(false)}>×</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button 
+                  onClick={downloadAsPDF}
+                  style={{
+                    background: '#4caf50',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 4,
+                    padding: '6px 12px',
+                    fontSize: '0.85em',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}
+                  title="Download as PDF"
+                >
+                  <span>⬇</span> Download PDF
+                </button>
+                <button className="popup-close" onClick={() => setShowPreview(false)}>×</button>
+              </div>
             </div>
-            <div className="popup-body">
+            <div className="popup-body" id="question-paper-print-content">
               <div style={{ marginBottom: 16, padding: 16, background: '#f5f5f5', borderRadius: 8 }}>
                 <p style={{ margin: '4px 0' }}><strong>Board:</strong> {generatedPaper.board}</p>
                 <p style={{ margin: '4px 0' }}><strong>Class:</strong> {generatedPaper.class}</p>
@@ -389,10 +910,9 @@ export default function QuestionPapers({ onHomeClick }) {
             </div>
             <div className="popup-actions">
               <button type="button" className="cta-button" style={{ marginRight: 12 }} onClick={() => setShowPreview(false)}>Close</button>
-              <button type="button" className="cta-button" onClick={() => {
-                alert('Question paper generated successfully!');
-                setShowPreview(false);
-              }}>Save & Print</button>
+              {viewMode === 'create' && (
+                <button type="button" className="cta-button" onClick={saveQuestionPaper}>Save & Print</button>
+              )}
             </div>
           </div>
         </div>

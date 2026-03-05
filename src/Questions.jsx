@@ -120,10 +120,13 @@ const [subjectViewMode, setSubjectViewMode] = useState("grid");
   const [pendingSubject, setPendingSubject] = useState(null);
   const [enteredPasskey, setEnteredPasskey] = useState("");
   const [passkeyError, setPasskeyError] = useState("");
-  const [unlockedSubjects, setUnlockedSubjects] = useState([]);
+const [unlockedSubjects, setUnlockedSubjects] = useState([]);
   
   // Store all subjects to determine which classes have subjects
   const [allSubjects, setAllSubjects] = useState([]);
+  
+  // Track expanded topics
+  const [expandedTopics, setExpandedTopics] = useState({});
   
 // Passkeys are now stored in the database - using pendingSubject.passkey
 
@@ -313,6 +316,72 @@ const verifyPasskey = () => {
   }
 };
 
+const getTopicName = (topicId) => {
+  const topic = topics.find(t => t._id === topicId);
+  return topic ? topic.valueName : topicId;
+};
+
+const handleDelete = (id) => {
+  if (!confirm('Are you sure you want to delete this question?')) {
+    return;
+  }
+  console.log('Deleting question with ID:', id);
+  fetch(`http://localhost:5000/api/questions/${id}`, {
+    method: 'DELETE'
+  })
+  .then(res => {
+    console.log('Delete response status:', res.status);
+    if (!res.ok) {
+      return res.json().then(err => { throw new Error(err.error || 'Delete failed'); });
+    }
+    return res.json();
+  })
+  .then(data => {
+    console.log('Delete response data:', data);
+    setQuestions(qs => qs.filter(q => {
+      // Handle both string and ObjectId comparisons
+      const questionId = q._id.toString();
+      const deleteId = id.toString();
+      return questionId !== deleteId;
+    }));
+  })
+  .catch(err => {
+    console.error('Delete error:', err);
+    alert('Failed to delete question: ' + err.message);
+  });
+};
+
+const toggleTopic = (topicId) => {
+  setExpandedTopics(prev => ({
+    ...prev,
+    [topicId]: !prev[topicId]
+  }));
+};
+
+// Group questions by topic and sort by marks
+const getQuestionsByTopic = () => {
+  const questionsByTopic = {};
+  questions.forEach(q => {
+    const topicId = q.topicId || 'uncategorized';
+    if (!questionsByTopic[topicId]) {
+      questionsByTopic[topicId] = [];
+    }
+    questionsByTopic[topicId].push(q);
+  });
+  
+  // Sort questions by marks within each topic (ascending order)
+  Object.keys(questionsByTopic).forEach(topicId => {
+    questionsByTopic[topicId].sort((a, b) => {
+      const marksA = a.marks || 0;
+      const marksB = b.marks || 0;
+      return marksA - marksB;
+    });
+  });
+  
+  return questionsByTopic;
+};
+
+const questionsByTopic = getQuestionsByTopic();
 
   // Popup/modal for add question (decoupled state)
   const AddQuestionPopup = () => {
@@ -628,28 +697,57 @@ const verifyPasskey = () => {
         {questions.length === 0 ? (
           <div className="questions-no-data">No questions found for this class and subject.</div>
         ) : (
-          <table className="questions-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Question</th>
-                <th>Type</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {questions.map((q) => (
-                <tr key={q._id}>
-                  <td>{formatId(q._id)}</td>
-                  <td>{q.text}</td>
-                  <td>{q.type}</td>
-                  <td>
-                    {/* Add edit/delete buttons here if needed */}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div>
+            {Object.entries(questionsByTopic).map(([topicId, topicQuestions]) => (
+              <div key={topicId} style={{ marginBottom: 16 }}>
+                <div 
+                  onClick={() => toggleTopic(topicId)}
+                  style={{ 
+                    background: '#05165b', 
+                    color: 'white', 
+                    padding: '12px 16px', 
+                    borderRadius: 8, 
+                    cursor: 'pointer',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    fontWeight: 600
+                  }}
+                >
+                  <span>{topicId === 'uncategorized' ? 'Uncategorized' : getTopicName(topicId)}</span>
+                  <span>{expandedTopics[topicId] ? '▼' : '▶'} ({topicQuestions.length})</span>
+                </div>
+                {expandedTopics[topicId] && (
+                  <table className="questions-table" style={{ marginTop: 8,backgroundColor:'#67cdf9' }}>
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Question</th>
+                        <th>Type</th>
+                        <th>Answer</th>
+                        <th>Mark</th>
+                        <th>Delete</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {topicQuestions.map((q) => (
+                        <tr key={q._id}>
+                          <td>{formatId(q._id)}</td>
+                          <td>{q.text}</td>
+                          <td>{q.type}</td>
+                          <td>{q.answer}</td>
+                          <td>{q.marks}</td>
+                          <td>
+                            <button onClick={() => handleDelete(q._id)} style={{background:'#fa0303',fontSize:16,padding:8,borderRadius:5,border:'none',color:'white'}}>Delete</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

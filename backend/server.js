@@ -16,7 +16,7 @@ const attributeSchema = new mongoose.Schema({
 });
 const Attribute = mongoose.model('Attribute', attributeSchema);
 
-// Value schema (add subjectId for topic dependency, classId, stream, and passkey)
+// Value schema
 const valueSchema = new mongoose.Schema({
   attributeId: mongoose.Schema.Types.ObjectId,
   valueName: String,
@@ -112,6 +112,74 @@ const questionSchema = new mongoose.Schema({
 });
 const Question = mongoose.model('Question', questionSchema);
 
+// Question Paper schema
+const questionPaperSchema = new mongoose.Schema({
+  board: { type: String, required: false },
+  boardId: { type: mongoose.Schema.Types.ObjectId, required: false },
+  class: { type: String, required: false },
+  classId: { type: mongoose.Schema.Types.ObjectId, required: false },
+  subject: { type: String, required: false },
+  subjectId: { type: mongoose.Schema.Types.ObjectId, required: false },
+  difficulty: { type: String, required: false },
+  totalMarks: { type: Number, required: false },
+  totalQuestions: { type: Number, required: false },
+  questions: { type: Array, required: false },
+  createdAt: { type: Date, default: Date.now }
+});
+const QuestionPaper = mongoose.model('QuestionPaper', questionPaperSchema);
+
+// Question Paper Permit schema
+const questionPaperPermitSchema = new mongoose.Schema({
+  questionPaperId: { type: mongoose.Schema.Types.ObjectId, ref: 'QuestionPaper', required: true },
+  startDate: { type: Date, required: true },
+  endDate: { type: Date, required: true },
+  timeLimit: { type: Number, required: true },
+  createdAt: { type: Date, default: Date.now }
+});
+const QuestionPaperPermit = mongoose.model('QuestionPaperPermit', questionPaperPermitSchema);
+
+// Question Paper Permit APIs
+app.post('/api/question-paper-permits', async (req, res) => {
+  try {
+    const { questionPaperId, startDate, endDate, timeLimit } = req.body;
+    const paper = await QuestionPaper.findById(questionPaperId);
+    if (!paper) {
+      return res.status(404).json({ error: 'Question paper not found' });
+    }
+    const permit = new QuestionPaperPermit({
+      questionPaperId,
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      timeLimit
+    });
+    await permit.save();
+    res.status(201).json(permit);
+  } catch (err) {
+    console.error('Error saving permit:', err);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.get('/api/question-paper-permits', async (req, res) => {
+  try {
+    const permits = await QuestionPaperPermit.find().populate('questionPaperId').sort({ createdAt: -1 });
+    res.json(permits);
+  } catch (err) {
+    console.error('Error fetching permits:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/question-paper-permits/:questionPaperId', async (req, res) => {
+  try {
+    const permits = await QuestionPaperPermit.find({ questionPaperId: req.params.questionPaperId }).populate('questionPaperId');
+    res.json(permits);
+  } catch (err) {
+    console.error('Error fetching permits:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Add a question
 app.post('/api/questions', async (req, res) => {
   try {
@@ -124,7 +192,7 @@ app.post('/api/questions', async (req, res) => {
   }
 });
 
-// Get questions (optionally filter by classId and subjectId)
+// Get questions
 app.get('/api/questions', async (req, res) => {
   const filter = {};
   if (req.query.classId) filter.classId = req.query.classId;
@@ -133,9 +201,102 @@ app.get('/api/questions', async (req, res) => {
   res.json(questions);
 });
 
+// Delete a question by ID
+app.delete('/api/questions/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('DELETE request received for question ID:', id);
+    
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      console.log('Invalid ObjectId format:', id);
+      return res.status(400).json({ error: 'Invalid question ID format' });
+    }
+    
+    const question = await Question.findByIdAndDelete(id);
+    if (!question) {
+      console.log('Question not found for ID:', id);
+      return res.status(404).json({ error: 'Question not found' });
+    }
+    console.log('Question deleted successfully:', question._id);
+    res.json({ message: 'Question deleted successfully', deletedQuestion: question });
+  } catch (err) {
+    console.error('Error deleting question:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Question Paper APIs
+app.post('/api/question-papers', async (req, res) => {
+  try {
+    console.log('Received question paper data:', JSON.stringify(req.body, null, 2));
+    
+    let paperData = { ...req.body };
+    if (paperData.questions && Array.isArray(paperData.questions)) {
+      paperData.questions = paperData.questions.map(q => {
+        return {
+          _id: q._id,
+          text: q.text,
+          marks: q.marks,
+          type: q.type,
+          options: q.options,
+          answer: q.answer,
+          topicId: q.topicId,
+          subjectId: q.subjectId,
+          classId: q.classId,
+          boardId: q.boardId
+        };
+      });
+    }
+    
+    const paper = new QuestionPaper(paperData);
+    await paper.save();
+    console.log('Question paper saved successfully:', paper._id);
+    res.status(201).json(paper);
+  } catch (err) {
+    console.error('Error saving question paper:', err);
+    console.error('Error stack:', err.stack);
+    res.status(400).json({ error: err.message, details: err.toString() });
+  }
+});
+
+app.get('/api/question-papers', async (req, res) => {
+  try {
+    const papers = await QuestionPaper.find().sort({ createdAt: -1 });
+    res.json(papers);
+  } catch (err) {
+    console.error('Error fetching question papers:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/question-papers/:id', async (req, res) => {
+  try {
+    const paper = await QuestionPaper.findById(req.params.id);
+    if (!paper) {
+      return res.status(404).json({ error: 'Question paper not found' });
+    }
+    res.json(paper);
+  } catch (err) {
+    console.error('Error fetching question paper:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/question-papers/:id', async (req, res) => {
+  try {
+    const paper = await QuestionPaper.findByIdAndDelete(req.params.id);
+    if (!paper) {
+      return res.status(404).json({ error: 'Question paper not found' });
+    }
+    res.json({ message: 'Question paper deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting question paper:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ==================== USER MANAGEMENT ====================
 
-// Admin Schema
 const adminSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
@@ -146,7 +307,6 @@ const adminSchema = new mongoose.Schema({
 });
 const Admin = mongoose.model('Admin', adminSchema);
 
-// Student Schema
 const studentSchema = new mongoose.Schema({
   name: { type: String, required: true },
   rollNumber: { type: String, required: true, unique: true },
@@ -161,7 +321,6 @@ const studentSchema = new mongoose.Schema({
 });
 const Student = mongoose.model('Student', studentSchema);
 
-// Test Record Schema (for storing test history with dates)
 const testRecordSchema = new mongoose.Schema({
   studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
   score: { type: Number, required: true },
@@ -174,7 +333,6 @@ const TestRecord = mongoose.model('TestRecord', testRecordSchema);
 
 // ==================== ADMIN APIs ====================
 
-// Get all admins
 app.get('/api/admins', async (req, res) => {
   try {
     const admins = await Admin.find().select('-password');
@@ -184,7 +342,6 @@ app.get('/api/admins', async (req, res) => {
   }
 });
 
-// Get admin by ID
 app.get('/api/admins/:id', async (req, res) => {
   try {
     const admin = await Admin.findById(req.params.id).select('-password');
@@ -197,7 +354,6 @@ app.get('/api/admins/:id', async (req, res) => {
   }
 });
 
-// Admin login
 app.post('/api/admins/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -217,7 +373,6 @@ app.post('/api/admins/login', async (req, res) => {
   }
 });
 
-// Create admin
 app.post('/api/admins', async (req, res) => {
   try {
     const admin = new Admin(req.body);
@@ -228,7 +383,6 @@ app.post('/api/admins', async (req, res) => {
   }
 });
 
-// Update admin
 app.put('/api/admins/:id', async (req, res) => {
   try {
     const { password, ...updateData } = req.body;
@@ -242,7 +396,6 @@ app.put('/api/admins/:id', async (req, res) => {
   }
 });
 
-// Delete admin
 app.delete('/api/admins/:id', async (req, res) => {
   try {
     const admin = await Admin.findByIdAndDelete(req.params.id);
@@ -255,7 +408,6 @@ app.delete('/api/admins/:id', async (req, res) => {
   }
 });
 
-// Toggle admin status
 app.put('/api/admins/:id/status', async (req, res) => {
   try {
     const admin = await Admin.findById(req.params.id);
@@ -272,7 +424,6 @@ app.put('/api/admins/:id/status', async (req, res) => {
 
 // ==================== STUDENT APIs ====================
 
-// Get all students
 app.get('/api/students', async (req, res) => {
   try {
     const students = await Student.find()
@@ -284,7 +435,6 @@ app.get('/api/students', async (req, res) => {
   }
 });
 
-// Get student by ID
 app.get('/api/students/:id', async (req, res) => {
   try {
     const student = await Student.findById(req.params.id)
@@ -299,38 +449,110 @@ app.get('/api/students/:id', async (req, res) => {
   }
 });
 
-// Student login
+function parseDate(dateStr) {
+  if (!dateStr) return null;
+  
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
+  
+  const monthNameMatch = dateStr.match(/^(\d{1,2})-([A-Za-z]+)-(\d{4})$/);
+  if (monthNameMatch) {
+    const day = monthNameMatch[1];
+    const monthName = monthNameMatch[2];
+    const year = monthNameMatch[3];
+    const monthIndex = monthNames.findIndex(m => m.toLowerCase() === monthName.toLowerCase());
+    if (monthIndex !== -1) {
+      const month = String(monthIndex + 1).padStart(2, '0');
+      return { day, month, year, formatted: `${day}-${month}-${year}` };
+    }
+  }
+  
+  const dashMatch = dateStr.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (dashMatch) {
+    const day = dashMatch[1].padStart(2, '0');
+    const month = dashMatch[2].padStart(2, '0');
+    const year = dashMatch[3];
+    return { day, month, year, formatted: `${day}-${month}-${year}` };
+  }
+  
+  return null;
+}
+
+function normalizeDateForComparison(dateStr1, dateStr2) {
+  const parsed1 = parseDate(dateStr1);
+  const parsed2 = parseDate(dateStr2);
+  
+  if (!parsed1 || !parsed2) {
+    return dateStr1.toLowerCase() === dateStr2.toLowerCase();
+  }
+  
+  return parsed1.formatted === parsed2.formatted;
+}
+
 app.post('/api/students/login', async (req, res) => {
   try {
     const { name, rollNumber, dateOfBirth } = req.body;
-    const student = await Student.findOne({ 
-      name, 
-      rollNumber, 
-      dateOfBirth,
-      status: 'Active' 
+    
+    console.log('Student login attempt:', { name, rollNumber, dateOfBirth });
+    
+    const student = await Student.findOne({
+      rollNumber: rollNumber,
+      status: 'Active'
     });
+    
+    console.log('Student found in DB:', student);
+    
     if (!student) {
       return res.status(401).json({ error: 'Invalid credentials or student not found' });
     }
+    
+    if (name && student.name) {
+      if (student.name.toLowerCase() !== name.toLowerCase()) {
+        return res.status(401).json({ error: 'Invalid credentials or student not found' });
+      }
+    }
+    
+    if (dateOfBirth && student.dateOfBirth) {
+      if (!normalizeDateForComparison(dateOfBirth, student.dateOfBirth)) {
+        return res.status(401).json({ error: 'Invalid credentials or student not found' });
+      }
+    }
+    
+    let className = null;
+    let boardName = null;
+    
+    if (student.classId) {
+      const classValue = await AttributeValue.findById(student.classId);
+      className = classValue ? classValue.valueName : null;
+    }
+    
+    if (student.boardId) {
+      const boardValue = await AttributeValue.findById(student.boardId);
+      boardName = boardValue ? boardValue.valueName : null;
+    }
+    
+    console.log('Login successful for student:', student.name);
     res.json({ 
       message: 'Login successful', 
       student: { 
         _id: student._id, 
         name: student.name, 
         rollNumber: student.rollNumber,
+        dateOfBirth: student.dateOfBirth,
         classId: student.classId,
-        boardId: student.boardId
+        className: className,
+        boardId: student.boardId,
+        boardName: boardName
       } 
     });
   } catch (err) {
+    console.error('Student login error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Create student
 app.post('/api/students', async (req, res) => {
   try {
-    // Filter out empty strings for optional ObjectId fields
     const data = { ...req.body };
     if (data.classId === "" || data.classId === null || data.classId === undefined) {
       delete data.classId;
@@ -349,10 +571,8 @@ app.post('/api/students', async (req, res) => {
   }
 });
 
-// Update student
 app.put('/api/students/:id', async (req, res) => {
   try {
-    // Filter out empty strings for optional ObjectId fields
     const data = { ...req.body };
     if (data.classId === "" || data.classId === null || data.classId === undefined) {
       delete data.classId;
@@ -373,7 +593,6 @@ app.put('/api/students/:id', async (req, res) => {
   }
 });
 
-// Delete student
 app.delete('/api/students/:id', async (req, res) => {
   try {
     const student = await Student.findByIdAndDelete(req.params.id);
@@ -386,7 +605,6 @@ app.delete('/api/students/:id', async (req, res) => {
   }
 });
 
-// Toggle student status
 app.put('/api/students/:id/status', async (req, res) => {
   try {
     const student = await Student.findById(req.params.id);
@@ -401,7 +619,6 @@ app.put('/api/students/:id/status', async (req, res) => {
   }
 });
 
-// Update student score
 app.put('/api/students/:id/score', async (req, res) => {
   try {
     const { score, incrementTest } = req.body;
@@ -422,7 +639,6 @@ app.put('/api/students/:id/score', async (req, res) => {
   }
 });
 
-// Get students by class
 app.get('/api/students/class/:classId', async (req, res) => {
   try {
     const students = await Student.find({ classId: req.params.classId })
@@ -434,7 +650,6 @@ app.get('/api/students/class/:classId', async (req, res) => {
   }
 });
 
-// Get students by board
 app.get('/api/students/board/:boardId', async (req, res) => {
   try {
     const students = await Student.find({ boardId: req.params.boardId })
@@ -448,23 +663,20 @@ app.get('/api/students/board/:boardId', async (req, res) => {
 
 // ==================== TEST RECORDS APIs ====================
 
-// Get test records for a student
 app.get('/api/test-records/:studentId', async (req, res) => {
   try {
     const records = await TestRecord.find({ studentId: req.params.studentId })
-      .sort({ testDate: -1 }); // Most recent first
+      .sort({ testDate: -1 });
     res.json(records);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Create a new test record
 app.post('/api/test-records', async (req, res) => {
   try {
     const { studentId, score, totalQuestions, correctAnswers, subjectName } = req.body;
     
-    // Create the test record
     const testRecord = new TestRecord({
       studentId,
       score,
@@ -475,7 +687,6 @@ app.post('/api/test-records', async (req, res) => {
     });
     await testRecord.save();
     
-    // Update student's total score and tests taken
     const student = await Student.findById(studentId);
     if (student) {
       student.totalScore += score;
@@ -489,7 +700,6 @@ app.post('/api/test-records', async (req, res) => {
   }
 });
 
-// Seed default admin (run once)
 app.get('/api/seed-admin', async (req, res) => {
   try {
     const existingAdmin = await Admin.findOne({ email: 'admin@qms.com' });
@@ -508,6 +718,10 @@ app.get('/api/seed-admin', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 app.listen(5000, () => console.log('Server running on port 5000'));

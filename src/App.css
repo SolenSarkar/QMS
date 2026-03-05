@@ -776,7 +776,8 @@
 .dashboard-row {
   display: flex;
   gap: 32px;
-  margin: 20px;
+  margin-top: 20px;
+  width: 90vw;
 }
 .dashboard-main-panel {
   flex: 2.2;
@@ -785,6 +786,7 @@
   padding: 28px 20px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   min-width: 0;
+  margin-bottom: 20px;
 }
 .dashboard-side-panel {
   flex: 1;
@@ -793,6 +795,7 @@
   padding: 28px 20px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   min-width: 0;
+  margin-bottom: 20px;
 }
 .dashboard-welcome-content p {
   font-size: 1.25em;

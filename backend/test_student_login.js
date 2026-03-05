@@ -8,9 +8,9 @@ async function testStudentLogin() {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        name: 'test',
-        rollNumber: 'test123',
-        dateOfBirth: '1-January-2010'
+        name: 'SOLEN SARKAR',
+        rollNumber: '07',
+        dateOfBirth: '30-10-2001'
       }),
     });
 

@@ -122,20 +122,25 @@ function Root() {
     );
   }
   if (page === 'student-dashboard') {
+    const studentData = JSON.parse(localStorage.getItem('qms_studentData') || '{}');
     return (
       <>
-        <StudentDashboard name={studentName}
+        <StudentDashboard 
+          name={studentName}
+          studentData={studentData}
           onProjectTitleClick={() => {
             setPage('main');
             setStudentName('');
             localStorage.removeItem('qms_page');
             localStorage.removeItem('qms_studentName');
+            localStorage.removeItem('qms_studentData');
           }}
           onLogout={() => {
             setPage('welcome');
             setStudentName('');
             localStorage.removeItem('qms_page');
             localStorage.removeItem('qms_studentName');
+            localStorage.removeItem('qms_studentData');
           }}
         />
         <Footer />

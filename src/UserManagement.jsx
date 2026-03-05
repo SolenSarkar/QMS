@@ -360,8 +360,8 @@ export default function UserManagement({ onHomeClick }) {
                       </span>
                     </td>
                     <td>{student.rollNumber}</td>
-                    <td>{student.classId?.valueName || '-'}</td>
-                    <td>{student.boardId?.valueName || '-'}</td>
+                    <td>{student.className || student.classId?.valueName || '-'}</td>
+                    <td>{student.boardName || student.boardId?.valueName || '-'}</td>
                     <td>
                       <span className={student.status === "Active" ? "status-active" : "status-inactive"}>
                         {student.status}
