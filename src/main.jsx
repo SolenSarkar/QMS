@@ -1,6 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 
+// Initialize Firebase
+import './firebase';
+
 import App from './App';
 import Welcome from './Welcome';
 import StudentWelcome from './StudentWelcome';
