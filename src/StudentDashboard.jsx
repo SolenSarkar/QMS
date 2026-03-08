@@ -38,7 +38,8 @@ function StudentDashboard({ name, studentData, onProjectTitleClick, onLogout }) 
   const [testSubmitted, setTestSubmitted] = useState(false);
   const [testSubmitting, setTestSubmitting] = useState(false);
   const [testResult, setTestResult] = useState(null);
-  const [showTestStartReminder, setShowTestStartReminder] = useState(false);
+const [showTestStartReminder, setShowTestStartReminder] = useState(false);
+  const [showExitWarning, setShowExitWarning] = useState(false);
 
   useEffect(() => {
     if (!activeTest || testTimeLeft <= 0 || testSubmitted) return;
@@ -73,7 +74,7 @@ function StudentDashboard({ name, studentData, onProjectTitleClick, onLogout }) 
     }
   }, [activeTest, testSubmitted]);
 
-  useEffect(() => {
+useEffect(() => {
     if (!activeTest && document.fullscreenElement) {
       const exitFullscreen = async () => {
         try {
@@ -89,6 +90,42 @@ function StudentDashboard({ name, studentData, onProjectTitleClick, onLogout }) 
       exitFullscreen();
     }
   }, [activeTest]);
+
+  // Detect fullscreen exit during test and show warning popup
+  useEffect(() => {
+    if (!activeTest || testSubmitted) return;
+    
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        // User exited fullscreen - show warning popup
+        setShowExitWarning(true);
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    };
+  }, [activeTest, testSubmitted]);
+
+  // Function to return to fullscreen
+  const returnToFullscreen = async () => {
+    try {
+      if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      } else if (document.documentElement.webkitRequestFullscreen) {
+        await document.documentElement.webkitRequestFullscreen();
+      } else if (document.documentElement.msRequestFullscreen) {
+        await document.documentElement.msRequestFullscreen();
+      }
+    } catch (err) {
+      console.log('Fullscreen request failed:', err);
+    }
+    setShowExitWarning(false);
+  };
 
   useEffect(() => {
     if (!activeTest || testSubmitted) return;
@@ -236,22 +273,95 @@ function StudentDashboard({ name, studentData, onProjectTitleClick, onLogout }) 
         const selectedOptionIndex = selectedAnswers[index];
         const correctAnswer = question.answer;
         let correctAnswerIndex = -1;
-        if (typeof correctAnswer === 'number') {
-          correctAnswerIndex = correctAnswer;
-        } else if (typeof correctAnswer === 'string') {
-          const answerChar = correctAnswer.toUpperCase();
-          correctAnswerIndex = answerChar.charCodeAt(0) - 65;
+        
+        // Determine the correct answer index based on answer type
+        if (question.type === 'text' || question.type === 'numeric') {
+          // For text/numeric questions, compare the actual text
+          const studentAnswer = textAnswers[index] || numericAnswers[index] || '';
+          const isCorrect = studentAnswer.toString().trim().toLowerCase() === correctAnswer.toString().trim().toLowerCase();
+          if (isCorrect) {
+            score += question.marks || 1;
+            correctAnswers++;
+          }
+          answers.push({
+            questionText: question.text,
+            options: question.options || [],
+            selectedAnswer: studentAnswer,
+            correctAnswer: correctAnswer,
+            isCorrect: isCorrect,
+            marks: question.marks || 1
+          });
+          return; // Skip the rest for text/numeric questions
         }
+        
+        // For single/multiple choice questions
+        // First check if answer is a valid letter (A, B, C, D)
+        let isLetterAnswer = false;
+        if (typeof correctAnswer === 'string') {
+          const answerChar = correctAnswer.toUpperCase().trim();
+          // Check if it's a valid single letter A-Z
+          if (answerChar.length === 1 && answerChar >= 'A' && answerChar <= 'Z') {
+            isLetterAnswer = true;
+            correctAnswerIndex = answerChar.charCodeAt(0) - 65;
+          }
+        }
+        
+        // If answer is NOT a letter code, it means the answer is stored as actual option text
+        // We need to find which option matches the correct answer
+        if (!isLetterAnswer && question.options && question.options.length > 0) {
+          // Find the index of the option that matches the correct answer
+          correctAnswerIndex = question.options.findIndex(opt => 
+            opt.toString().trim().toLowerCase() === correctAnswer.toString().trim().toLowerCase()
+          );
+        }
+        
+        // Validate that the correct answer index is within valid range
+        const maxOptionIndex = (question.options?.length || 4) - 1;
+        if (correctAnswerIndex < 0 || correctAnswerIndex > maxOptionIndex) {
+          // Invalid answer - mark as incorrect
+          correctAnswerIndex = -1;
+        }
+        
         const isCorrect = selectedOptionIndex === correctAnswerIndex;
         if (isCorrect) {
           score += question.marks || 1;
           correctAnswers++;
         }
+        
+        // Store the selected answer as letter (A, B, C, D) for proper display in review
+        // Or as the actual option text if comparing by text
+        let selectedAnswerDisplay;
+        if (selectedOptionIndex !== undefined && selectedOptionIndex >= 0) {
+          if (isLetterAnswer) {
+            selectedAnswerDisplay = String.fromCharCode(65 + selectedOptionIndex);
+          } else if (question.options && question.options[selectedOptionIndex]) {
+            selectedAnswerDisplay = question.options[selectedOptionIndex];
+          } else {
+            selectedAnswerDisplay = String(selectedOptionIndex);
+          }
+        } else {
+          selectedAnswerDisplay = '';
+        }
+        
+        // Store the correct answer as the letter (A, B, C, D) or as the actual option text
+        let correctAnswerDisplay;
+        if (correctAnswerIndex >= 0) {
+          if (isLetterAnswer) {
+            correctAnswerDisplay = String.fromCharCode(65 + correctAnswerIndex);
+          } else if (question.options && question.options[correctAnswerIndex]) {
+            correctAnswerDisplay = question.options[correctAnswerIndex];
+          } else {
+            correctAnswerDisplay = String(correctAnswerIndex);
+          }
+        } else {
+          correctAnswerDisplay = correctAnswer;
+        }
+        
         answers.push({
           questionText: question.text,
           options: question.options || [],
-          selectedAnswer: selectedOptionIndex,
-          correctAnswer: correctAnswerIndex,
+          selectedAnswer: selectedAnswerDisplay,
+          correctAnswer: correctAnswerDisplay,
           isCorrect: isCorrect,
           marks: question.marks || 1
         });
@@ -275,7 +385,7 @@ function StudentDashboard({ name, studentData, onProjectTitleClick, onLogout }) 
           totalQuestions: questions.length,
           correctAnswers: correctAnswers,
           subjectName: activeTest.paper.subject,
-          questionResults: answers
+          answers: answers
         })
       });
 
@@ -859,35 +969,119 @@ function StudentDashboard({ name, studentData, onProjectTitleClick, onLogout }) 
             <h3 style={{ marginTop: 0, marginBottom: 16, color: '#333' }}>Question Review</h3>
             {reviewRecord.answers && reviewRecord.answers.length > 0 ? (
               <div style={{ display: 'grid', gap: 16 }}>
-                {reviewRecord.answers.map((answer, index) => (
-                  <div key={index} style={{ padding: 16, borderRadius: 8, border: `2px solid ${answer.isCorrect ? '#4caf50' : '#f44336'}`, backgroundColor: answer.isCorrect ? '#f1f8e9' : '#ffebee' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                      <p style={{ margin: 0, fontWeight: 600, fontSize: '1.1em' }}><strong>Q{index + 1}.</strong> {answer.questionText}</p>
-                      <span style={{ padding: '4px 10px', borderRadius: 12, fontSize: '0.8em', fontWeight: 600, backgroundColor: answer.isCorrect ? '#4caf50' : '#f44336', color: '#fff' }}>{answer.isCorrect ? '✓ Correct' : '✗ Incorrect'}</span>
-                    </div>
-                    {answer.options && answer.options.length > 0 && (
-                      <div style={{ marginTop: 12 }}>
-                        {answer.options.map((opt, optIndex) => {
-                          const isSelected = answer.selectedAnswer === optIndex;
-                          const isCorrect = answer.correctAnswer === optIndex;
-                          let backgroundColor = 'transparent';
-                          let borderColor = '#ddd';
-                          let fontWeight = 400;
-                          if (isCorrect) { backgroundColor = '#c8e6c9'; borderColor = '#4caf50'; fontWeight = 600; }
-                          else if (isSelected && !isCorrect) { backgroundColor = '#ffcdd2'; borderColor = '#f44336'; fontWeight = 600; }
-                          return (
-                            <div key={optIndex} style={{ padding: '10px 12px', margin: '4px 0', borderRadius: 6, border: `2px solid ${borderColor}`, backgroundColor: backgroundColor, fontWeight }}>
-                              {String.fromCharCode(65 + optIndex)}. {opt}
-                              {isSelected && <span style={{ marginLeft: 8, fontWeight: 600 }}> (Your Answer)</span>}
-                              {isCorrect && !isSelected && <span style={{ marginLeft: 8, fontWeight: 600, color: '#2e7d32' }}>(Correct Answer)</span>}
-                            </div>
-                          );
-                        })}
+                {reviewRecord.answers.map((answer, index) => {
+                  // Determine if this is a text/numeric question (no options) or multiple choice
+                  const hasOptions = answer.options && answer.options.length > 0;
+                  
+                  // Format the correct answer for display
+                  const formatAnswer = (ans) => {
+                    if (ans === undefined || ans === null || ans === '') return 'Not Answered';
+                    if (typeof ans === 'number') {
+                      // Check if it's a letter code (0-3 for A-D)
+                      if (ans >= 0 && ans <= 25) {
+                        return String.fromCharCode(65 + ans);
+                      }
+                      return String(ans);
+                    }
+                    return String(ans);
+                  };
+                  
+                  // Get user's answer display
+                  const userAnswerDisplay = formatAnswer(answer.selectedAnswer);
+                  // Get correct answer display  
+                  const correctAnswerDisplay = formatAnswer(answer.correctAnswer);
+                  
+                  return (
+                    <div key={index} style={{ padding: 16, borderRadius: 8, border: `2px solid ${answer.isCorrect ? '#4caf50' : '#f44336'}`, backgroundColor: answer.isCorrect ? '#f1f8e9' : '#ffebee' }}>
+                      {/* Question Header with status */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                        <p style={{ margin: 0, fontWeight: 600, fontSize: '1.1em', flex: 1, paddingRight: 12 }}>
+                          <strong>Q{index + 1}.</strong> {answer.questionText}
+                          {answer.marks && <span style={{ marginLeft: 8, fontSize: '0.85em', color: '#666', fontWeight: 400 }}>({answer.marks} mark{answer.marks > 1 ? 's' : ''})</span>}
+                        </p>
+                        <span style={{ padding: '4px 10px', borderRadius: 12, fontSize: '0.8em', fontWeight: 600, backgroundColor: answer.isCorrect ? '#4caf50' : '#f44336', color: '#fff', whiteSpace: 'nowrap' }}>
+                          {answer.isCorrect ? '✓ Correct' : '✗ Incorrect'}
+                        </span>
                       </div>
-                    )}
-                    {!answer.isCorrect && answer.correctAnswer !== undefined && (<p style={{ margin: '12px 0 0 0', fontSize: '0.9em', color: '#2e7d32' }}><strong>Correct Answer:</strong> {String.fromCharCode(65 + answer.correctAnswer)}</p>)}
-                  </div>
-                ))}
+                      
+                      {/* Your Answer Section - Always Visible */}
+                      <div style={{ marginTop: 12, padding: '12px 16px', borderRadius: 6, backgroundColor: answer.isCorrect ? '#e8f5e9' : '#ffebee', border: `1px solid ${answer.isCorrect ? '#4caf50' : '#f44336'}` }}>
+                        <p style={{ margin: '0 0 6px 0', fontSize: '0.85em', fontWeight: 600, color: '#333' }}>
+                          {answer.isCorrect ? '✓ Your Answer (Correct)' : '✗ Your Answer'}
+                        </p>
+                        <p style={{ margin: 0, fontSize: '1.1em', fontWeight: 600, color: answer.isCorrect ? '#2e7d32' : '#c62828' }}>
+                          {userAnswerDisplay}
+                        </p>
+                      </div>
+                      
+                      {/* Show options for multiple choice questions */}
+                      {hasOptions && (
+                        <div style={{ marginTop: 12 }}>
+                          <p style={{ margin: '0 0 8px 0', fontSize: '0.85em', fontWeight: 600, color: '#666' }}>Options:</p>
+                          {answer.options.map((opt, optIndex) => {
+                            // Check if answers are letter codes or text
+                            const isSelectedLetter = typeof answer.selectedAnswer === 'string' && answer.selectedAnswer.length === 1 && /[A-Z]/i.test(answer.selectedAnswer);
+                            const isCorrectLetter = typeof answer.correctAnswer === 'string' && answer.correctAnswer.length === 1 && /[A-Z]/i.test(answer.correctAnswer);
+                            
+                            let isSelected = false;
+                            let isCorrectOption = false;
+                            
+                            if (isSelectedLetter && isCorrectLetter) {
+                              // Both are letter codes - compare by index
+                              const selectedIdx = answer.selectedAnswer.toUpperCase().charCodeAt(0) - 65;
+                              const correctIdx = answer.correctAnswer.toUpperCase().charCodeAt(0) - 65;
+                              isSelected = optIndex === selectedIdx;
+                              isCorrectOption = optIndex === correctIdx;
+                            } else {
+                              // Compare by text content
+                              isSelected = opt.toString().trim().toLowerCase() === (answer.selectedAnswer || '').toString().trim().toLowerCase();
+                              isCorrectOption = opt.toString().trim().toLowerCase() === (answer.correctAnswer || '').toString().trim().toLowerCase();
+                            }
+                            
+                            let backgroundColor = '#fff';
+                            let borderColor = '#e0e0e0';
+                            let fontWeight = 400;
+                            let badge = null;
+                            
+                            if (isCorrectOption) { 
+                              backgroundColor = '#c8e6c9'; 
+                              borderColor = '#4caf50'; 
+                              fontWeight = 600;
+                              badge = <span style={{ marginLeft: 8, fontWeight: 600, color: '#2e7d32', fontSize: '0.85em' }}>✓ Correct</span>;
+                            }
+                            else if (isSelected && !isCorrectOption) { 
+                              backgroundColor = '#ffcdd2'; 
+                              borderColor = '#f44336'; 
+                              fontWeight = 600;
+                              badge = <span style={{ marginLeft: 8, fontWeight: 600, color: '#c62828', fontSize: '0.85em' }}>✗ Wrong</span>;
+                            }
+                            
+                            return (
+                              <div key={optIndex} style={{ padding: '10px 12px', margin: '4px 0', borderRadius: 6, border: '2px solid ' + borderColor, backgroundColor: backgroundColor, fontWeight: fontWeight, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ flex: 1 }}>
+                                  {String.fromCharCode(65 + optIndex)}. {opt}
+                                </span>
+                                {badge}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      
+                      {/* Correct Answer Section - Only show if wrong */}
+                      {!answer.isCorrect && answer.correctAnswer !== undefined && answer.correctAnswer !== "" && (
+                        <div style={{ marginTop: 12, padding: '12px 16px', borderRadius: 6, backgroundColor: '#e8f5e9', border: '1px solid #4caf50' }}>
+                          <p style={{ margin: '0 0 6px 0', fontSize: '0.85em', fontWeight: 600, color: '#2e7d32' }}>
+                            ✓ Correct Answer
+                          </p>
+                          <p style={{ margin: 0, fontSize: '1.1em', fontWeight: 600, color: '#2e7d32' }}>
+                            {correctAnswerDisplay}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ) : (<div style={{ textAlign: 'center', padding: 40, color: '#888' }}><p>No detailed answers available for this test.</p></div>)}
             <div style={{ marginTop: 24, display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
@@ -990,7 +1184,7 @@ function StudentDashboard({ name, studentData, onProjectTitleClick, onLogout }) 
         </div>
       )}
 
-      {showTestStartReminder && (
+{showTestStartReminder && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }}>
           <div style={{ backgroundColor: '#fff', borderRadius: 16, padding: 32, width: '90%', maxWidth: 450, boxShadow: '0 8px 32px rgba(0,0,0,0.3)', textAlign: 'center' }}>
             <div style={{ width: 80, height: 80, borderRadius: '50%', margin: '0 auto 24px', backgroundColor: '#ff9800', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: '2.5em', color: '#fff' }}>⚠️</span></div>
@@ -1001,6 +1195,24 @@ function StudentDashboard({ name, studentData, onProjectTitleClick, onLogout }) 
             </div>
             <p style={{ margin: '0 0 24px 0', color: '#666', fontSize: '0.95em' }}>Click <strong>"I Understand"</strong> to proceed with the test.</p>
             <button onClick={() => setShowTestStartReminder(false)} style={{ padding: '14px 40px', borderRadius: 8, border: 'none', backgroundColor: '#4caf50', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: '1.1em' }}>I Understand</button>
+          </div>
+        </div>
+      )}
+
+{showExitWarning && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3500 }}>
+          <div style={{ backgroundColor: '#fff', borderRadius: 16, padding: 32, width: '90%', maxWidth: 480, boxShadow: '0 8px 32px rgba(0,0,0,0.3)', textAlign: 'center' }}>
+            <div style={{ width: 80, height: 80, borderRadius: '50%', margin: '0 auto 24px', backgroundColor: '#f44336', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: '2.5em', color: '#fff' }}>⛔</span></div>
+            <h2 style={{ margin: '0 0 16px 0', color: '#333', fontSize: '1.6em' }}>Do Not Exit!</h2>
+            <div style={{ textAlign: 'left', backgroundColor: '#ffebee', borderRadius: 12, padding: 20, marginBottom: 24, borderLeft: '4px solid #f44336' }}>
+              <p style={{ margin: '0 0 12px 0', color: '#333', fontSize: '1.05em', fontWeight: 600 }}>You are about to exit the test prematurely!</p>
+              <ul style={{ margin: 0, paddingLeft: 20, color: '#666', lineHeight: 1.8 }}><li>Your progress will be <strong>LOST</strong></li><li>You will need to start the test again</li><li>All answered questions will be discarded</li></ul>
+            </div>
+            <p style={{ margin: '0 0 24px 0', color: '#666', fontSize: '0.95em' }}>Please return to the test to complete it.</p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+              <button onClick={returnToFullscreen} style={{ padding: '14px 28px', borderRadius: 8, border: 'none', backgroundColor: '#4caf50', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: '1em' }}>Return to Test</button>
+              <button onClick={() => { setShowExitWarning(false); closeTest(); }} style={{ padding: '14px 28px', borderRadius: 8, border: '1px solid #ddd', backgroundColor: '#fff', color: '#666', fontWeight: 600, cursor: 'pointer', fontSize: '1em' }}>I Still Want to Exit</button>
+            </div>
           </div>
         </div>
       )}

@@ -559,9 +559,27 @@ const questionsByTopic = getQuestionsByTopic();
             <label style={{ fontWeight: 600, color: '#333', marginBottom: 2, textAlign: 'left' }}>Question
               <textarea value={localQuestion} onChange={e => setLocalQuestion(e.target.value)} rows={3} style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1.5px solid #bfc8e0', fontSize: '1em', background: '#f8fafc', color: '#1a237e', marginTop: 4, resize: 'vertical' }} placeholder="Enter question text..." />
             </label>
-            <label style={{ fontWeight: 600, color: '#333', marginBottom: 2, textAlign: 'left' }}>Answer
-              <textarea value={localAnswer} onChange={e => setLocalAnswer(e.target.value)} rows={2} style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1.5px solid #bfc8e0', fontSize: '1em', background: '#f8fafc', color: '#1a237e', marginTop: 4, resize: 'vertical' }} placeholder="Enter answer..." />
-            </label>
+            {(localType === "single" || localType === "multiple") && localOptions.length > 0 && (
+              <label style={{ fontWeight: 600, color: '#333', marginBottom: 2, textAlign: 'left' }}>Correct Answer
+                <select 
+                  value={localAnswer} 
+                  onChange={e => setLocalAnswer(e.target.value)} 
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1.5px solid #bfc8e0', fontSize: '1em', background: '#f8fafc', color: '#1a237e', marginTop: 4 }}
+                >
+                  <option value="">Select Correct Answer</option>
+                  {localOptions.map((opt, idx) => (
+                    <option key={idx} value={String.fromCharCode(65 + idx)}>
+                      {String.fromCharCode(65 + idx)}. {opt}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {(localType === "text" || localType === "numeric") && (
+              <label style={{ fontWeight: 600, color: '#333', marginBottom: 2, textAlign: 'left' }}>Answer
+                <textarea value={localAnswer} onChange={e => setLocalAnswer(e.target.value)} rows={2} style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1.5px solid #bfc8e0', fontSize: '1em', background: '#f8fafc', color: '#1a237e', marginTop: 4, resize: 'vertical' }} placeholder="Enter answer..." />
+              </label>
+            )}
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 14, marginTop: 22 }}>
             <button onClick={() => setShowAddPopup(false)} style={{ background: '#eee', color: '#333', borderRadius: 8, padding: '10px 24px', fontWeight: 600, fontSize: '1em', border: 'none', boxShadow: '0 2px 8px rgba(60,60,120,0.06)', cursor: 'pointer' }}>Cancel</button>

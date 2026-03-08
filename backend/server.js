@@ -329,8 +329,8 @@ const testRecordSchema = new mongoose.Schema({
   correctAnswers: { type: Number, required: true },
   subjectName: { type: String },
   testDate: { type: Date, default: Date.now },
-  // Store detailed question results for review
-  questionResults: { type: Array, default: [] }
+// Store detailed question results for review
+  answers: { type: Array, default: [] }
 });
 const TestRecord = mongoose.model('TestRecord', testRecordSchema);
 
@@ -704,7 +704,7 @@ app.get('/api/test-records/:studentId', async (req, res) => {
 
 app.post('/api/test-records', async (req, res) => {
   try {
-    const { studentId, questionPaperId, score, totalQuestions, correctAnswers, subjectName, questionResults } = req.body;
+    const { studentId, questionPaperId, score, totalQuestions, correctAnswers, subjectName, answers } = req.body;
     
     const testRecord = new TestRecord({
       studentId,
@@ -714,7 +714,7 @@ app.post('/api/test-records', async (req, res) => {
       correctAnswers: correctAnswers,
       subjectName,
       testDate: new Date(),
-      questionResults: questionResults || []
+      answers: answers || []
     });
     await testRecord.save();
     
