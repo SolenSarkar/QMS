@@ -15,12 +15,12 @@ export default function Results({ onHomeClick }) {
 
   // Fetch classes for filter dropdown
   useEffect(() => {
-    fetch("/api/attributes")
+    fetch("https://qms-sjuv.onrender.com/api/attributes")
       .then(res => res.json())
       .then(attrs => {
         const classAttr = attrs.find(a => a.name.toLowerCase() === "class");
         if (classAttr) {
-          fetch(`/api/values/${classAttr._id}`)
+          fetch(`https://qms-sjuv.onrender.com/api/values/${classAttr._id}`)
             .then(res => res.json())
             .then(data => setClasses(data.filter(v => v.status === 'Active')))
             .catch(err => console.error("Error fetching classes:", err));
@@ -35,7 +35,7 @@ export default function Results({ onHomeClick }) {
       setLoading(true);
       try {
         // Fetch all students
-        const studentsRes = await fetch("/api/students");
+        const studentsRes = await fetch("https://qms-sjuv.onrender.com/api/students");
         const studentsData = await studentsRes.json();
         
         if (Array.isArray(studentsData) && studentsData.length > 0) {
@@ -45,7 +45,7 @@ export default function Results({ onHomeClick }) {
           const allRecords = [];
           for (const student of studentsData) {
             try {
-              const recordsRes = await fetch(`/api/test-records/${student._id}`);
+              const recordsRes = await fetch(`https://qms-sjuv.onrender.com/api/test-records/${student._id}`);
               const recordsData = await recordsRes.json();
               
               if (Array.isArray(recordsData)) {

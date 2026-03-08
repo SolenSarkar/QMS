@@ -33,19 +33,19 @@ export default function UserManagement({ onHomeClick }) {
 
   // Fetch classes and boards
   useEffect(() => {
-    fetch("/api/attributes")
+    fetch("https://qms-sjuv.onrender.com/api/attributes")
       .then(res => res.json())
       .then(attrs => {
         const boardAttr = attrs.find(a => a.name.toLowerCase() === "board");
         if (boardAttr) {
-          fetch(`/api/values/${boardAttr._id}`)
+          fetch(`https://qms-sjuv.onrender.com/api/values/${boardAttr._id}`)
             .then(res => res.json())
             .then(data => setBoards(data.filter(v => v.status === 'Active')))
             .catch(err => console.error("Error fetching boards:", err));
         }
         const classAttr = attrs.find(a => a.name.toLowerCase() === "class");
         if (classAttr) {
-          fetch(`/api/values/${classAttr._id}`)
+          fetch(`https://qms-sjuv.onrender.com/api/values/${classAttr._id}`)
             .then(res => res.json())
             .then(data => setClasses(data.filter(v => v.status === 'Active')))
             .catch(err => console.error("Error fetching classes:", err));
@@ -59,11 +59,11 @@ export default function UserManagement({ onHomeClick }) {
     setLoading(true);
     try {
       if (activeTab === "students") {
-        const res = await fetch("/api/students");
+        const res = await fetch("https://qms-sjuv.onrender.com/api/students");
         const data = await res.json();
         setStudents(Array.isArray(data) ? data : []);
       } else {
-        const res = await fetch("/api/admins");
+        const res = await fetch("https://qms-sjuv.onrender.com/api/admins");
         const data = await res.json();
         setAdmins(Array.isArray(data) ? data : []);
       }
@@ -145,7 +145,7 @@ export default function UserManagement({ onHomeClick }) {
         if (editingUser) {
           // Update student
           const { password, ...updateData } = preparedData;
-          const res = await fetch(`/api/students/${editingUser._id}`, {
+          const res = await fetch(`https://qms-sjuv.onrender.com/api/students/${editingUser._id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(updateData)
@@ -157,7 +157,7 @@ export default function UserManagement({ onHomeClick }) {
           }
         } else {
           // Create student
-          const res = await fetch("/api/students", {
+          const res = await fetch("https://qms-sjuv.onrender.com/api/students", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(preparedData)
@@ -174,7 +174,7 @@ export default function UserManagement({ onHomeClick }) {
         if (editingUser) {
           // Update admin
           const { password, ...updateData } = preparedData;
-          const res = await fetch(`/api/admins/${editingUser._id}`, {
+          const res = await fetch(`https://qms-sjuv.onrender.com/api/admins/${editingUser._id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(updateData)
@@ -186,7 +186,7 @@ export default function UserManagement({ onHomeClick }) {
           }
         } else {
           // Create admin
-          const res = await fetch("/api/admins", {
+          const res = await fetch("https://qms-sjuv.onrender.com/api/admins", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ ...preparedData, role: "admin" })
@@ -211,9 +211,9 @@ export default function UserManagement({ onHomeClick }) {
   const toggleStatus = async (id) => {
     try {
       if (activeTab === "students") {
-        await fetch(`/api/students/${id}/status`, { method: "PUT" });
+        await fetch(`https://qms-sjuv.onrender.com/api/students/${id}/status`, { method: "PUT" });
       } else {
-        await fetch(`/api/admins/${id}/status`, { method: "PUT" });
+        await fetch(`https://qms-sjuv.onrender.com/api/admins/${id}/status`, { method: "PUT" });
       }
       fetchUsers();
     } catch (err) {
@@ -226,9 +226,9 @@ export default function UserManagement({ onHomeClick }) {
     if (!window.confirm("Are you sure you want to delete this user?")) return;
     try {
       if (activeTab === "students") {
-        await fetch(`/api/students/${id}`, { method: "DELETE" });
+        await fetch(`https://qms-sjuv.onrender.com/api/students/${id}`, { method: "DELETE" });
       } else {
-        await fetch(`/api/admins/${id}`, { method: "DELETE" });
+        await fetch(`https://qms-sjuv.onrender.com/api/admins/${id}`, { method: "DELETE" });
       }
       fetchUsers();
     } catch (err) {
@@ -240,10 +240,10 @@ export default function UserManagement({ onHomeClick }) {
   const deleteTestRecord = async (recordId) => {
     if (!window.confirm("Are you sure you want to delete this test attempt? This will allow the student to retake the test.")) return;
     try {
-      const res = await fetch(`/api/test-records/${recordId}`, { method: "DELETE" });
+      const res = await fetch(`https://qms-sjuv.onrender.com/api/test-records/${recordId}`, { method: "DELETE" });
       if (res.ok) {
         // Refresh test records
-        const response = await fetch(`/api/test-records/${selectedStudent._id}`);
+        const response = await fetch(`https://qms-sjuv.onrender.com/api/test-records/${selectedStudent._id}`);
         if (response.ok) {
           const data = await response.json();
           setTestRecords(data);
@@ -366,7 +366,7 @@ export default function UserManagement({ onHomeClick }) {
                         onClick={() => {
                           setSelectedStudent(student);
                           setLoadingTestRecords(true);
-                          fetch(`/api/test-records/${student._id}`)
+                          fetch(`https://qms-sjuv.onrender.com/api/test-records/${student._id}`)
                             .then(res => res.json())
                             .then(data => {
                               setTestRecords(data);

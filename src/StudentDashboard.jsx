@@ -209,7 +209,7 @@ useEffect(() => {
       const startTest = async (paper) => {
     
     try {
-      const permitsRes = await fetch("/api/question-paper-permits");
+      const permitsRes = await fetch("https://qms-sjuv.onrender.com/api/question-paper-permits");
       const permits = await permitsRes.json();
       const now = new Date();
       const paperPermit = permits.find(permit => {
@@ -227,7 +227,7 @@ useEffect(() => {
         return;
       }
 
-      const checkRes = await fetch(`/api/test-records/check/${studentId}/${paper._id}`);
+      const checkRes = await fetch(`https://qms-sjuv.onrender.com/api/test-records/check/${studentId}/${paper._id}`);
       const checkData = await checkRes.json();
       
       if (checkData.hasAttempted) {
@@ -392,7 +392,7 @@ useEffect(() => {
         submittedAt: new Date()
       };
 
-      const response = await fetch('/api/test-records', {
+      const response = await fetch('https://qms-sjuv.onrender.com/api/test-records', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -409,7 +409,7 @@ useEffect(() => {
       if (response.ok) {
         setTestResult(result);
         setTestSubmitted(true);
-        const recordsRes = await fetch(`/api/test-records/${studentId}`);
+        const recordsRes = await fetch(`https://qms-sjuv.onrender.com/api/test-records/${studentId}`);
         if (recordsRes.ok) {
           const recordsData = await recordsRes.json();
           setTestRecords(recordsData);
@@ -465,14 +465,14 @@ useEffect(() => {
     }
     const fetchData = async () => {
       try {
-        const attrsRes = await fetch("/api/attributes");
+        const attrsRes = await fetch("https://qms-sjuv.onrender.com/api/attributes");
         const attrs = await attrsRes.json();
         const subjectAttr = attrs.find(a => a.name && a.name.toLowerCase() === "subject");
         if (!subjectAttr) {
           setLoading(false);
           return;
         }
-        const subjectsRes = await fetch(`/api/values/${subjectAttr._id}`);
+        const subjectsRes = await fetch(`https://qms-sjuv.onrender.com/api/values/${subjectAttr._id}`);
         const subjectsData = await subjectsRes.json();
         const classIdStr = normalizeId(classId);
         const filteredSubjects = subjectsData.filter(s => {
@@ -481,7 +481,7 @@ useEffect(() => {
         });
         setSubjects(filteredSubjects);
 
-        const questionsRes = await fetch("/api/questions");
+        const questionsRes = await fetch("https://qms-sjuv.onrender.com/api/questions");
         const questions = await questionsRes.json();
         const subjectQuestionMap = {};
         questions.forEach(q => {
@@ -511,7 +511,7 @@ useEffect(() => {
     }
     const fetchTestCardData = async () => {
       try {
-        const response = await fetch(`/api/test-records/${studentId}`);
+        const response = await fetch(`https://qms-sjuv.onrender.com/api/test-records/${studentId}`);
         if (response.ok) {
           const data = await response.json();
           setTestRecords(data);
@@ -528,7 +528,7 @@ useEffect(() => {
     if (activeTab === 'mytest' && studentId) {
       const fetchRecords = async () => {
         try {
-          const response = await fetch(`/api/test-records/${studentId}`);
+          const response = await fetch(`https://qms-sjuv.onrender.com/api/test-records/${studentId}`);
           if (response.ok) {
             const data = await response.json();
             setTestRecords(data);
@@ -553,9 +553,9 @@ useEffect(() => {
     const fetchTestPapers = async () => {
       setLoadingPapers(true);
       try {
-        const papersRes = await fetch("/api/question-papers");
+        const papersRes = await fetch("https://qms-sjuv.onrender.com/api/question-papers");
         const papers = await papersRes.json();
-        const permitsRes = await fetch("/api/question-paper-permits");
+        const permitsRes = await fetch("https://qms-sjuv.onrender.com/api/question-paper-permits");
         const permits = await permitsRes.json();
         const now = new Date();
         const classIdStr = normalizeId(classId);
@@ -596,7 +596,7 @@ useEffect(() => {
     const fetchTestRecords = async () => {
       setLoadingResults(true);
       try {
-        const response = await fetch(`/api/test-records/${studentId}`);
+        const response = await fetch(`https://qms-sjuv.onrender.com/api/test-records/${studentId}`);
         if (response.ok) {
           const data = await response.json();
           setTestRecords(data);
@@ -616,7 +616,7 @@ useEffect(() => {
     const fetchQueries = async () => {
       setLoadingQueries(true);
       try {
-        const response = await fetch(`/api/queries/student/${studentId}`);
+        const response = await fetch(`https://qms-sjuv.onrender.com/api/queries/student/${studentId}`);
         if (response.ok) {
           const data = await response.json();
           setQueries(data);
@@ -637,7 +637,7 @@ useEffect(() => {
     const fetchFeedback = async () => {
       setLoadingFeedbacks(true);
       try {
-        const response = await fetch(`/api/feedback/student/${studentId}`);
+        const response = await fetch(`https://qms-sjuv.onrender.com/api/feedback/student/${studentId}`);
         if (response.ok) {
           const data = await response.json();
           setFeedbacks(data);
@@ -660,7 +660,7 @@ useEffect(() => {
     
     setSubmittingQuery(true);
     try {
-      const response = await fetch('/api/queries', {
+      const response = await fetch('https://qms-sjuv.onrender.com/api/queries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -677,7 +677,7 @@ useEffect(() => {
         setShowQueryModal(false);
         setNewQuery({ subject: '', message: '' });
         // Refresh queries list
-        const queriesRes = await fetch(`/api/queries/student/${studentId}`);
+        const queriesRes = await fetch(`https://qms-sjuv.onrender.com/api/queries/student/${studentId}`);
         if (queriesRes.ok) {
           const data = await queriesRes.json();
           setQueries(data);
@@ -792,7 +792,7 @@ useEffect(() => {
     setSaving(true);
     setSaveMessage('');
     try {
-      const response = await fetch(`/api/students/${studentId}`, {
+      const response = await fetch(`https://qms-sjuv.onrender.com/api/students/${studentId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -874,7 +874,7 @@ useEffect(() => {
       }
       
       // If answers don't exist, fetch detailed record from API
-      const response = await fetch(`/api/test-records/detail/${record._id}`);
+      const response = await fetch(`https://qms-sjuv.onrender.com/api/test-records/detail/${record._id}`);
       if (response.ok) {
         const detailedRecord = await response.json();
         setReviewRecord(detailedRecord);
@@ -1348,7 +1348,7 @@ useEffect(() => {
                   }
                   setSubmittingFeedback(true);
                   try {
-                    const response = await fetch('/api/feedback', {
+                    const response = await fetch('https://qms-sjuv.onrender.com/api/feedback', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({

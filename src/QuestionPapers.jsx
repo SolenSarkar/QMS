@@ -26,24 +26,24 @@ export default function QuestionPapers({ onHomeClick }) {
 
   // Fetch boards and classes
   useEffect(() => {
-    fetch("/api/attributes")
+fetch("https://qms-sjuv.onrender.com/api/attributes")
       .then(res => res.json())
       .then(attrs => {
         const boardAttr = attrs.find(a => a.name.toLowerCase() === "board");
         if (boardAttr) {
-          fetch(`/api/values/${boardAttr._id}`)
+fetch("https://qms-sjuv.onrender.com/api/values/${boardAttr._id}")
             .then(res => res.json())
             .then(data => setBoards(data.filter(v => v.status === 'Active')));
         }
         const classAttr = attrs.find(a => a.name.toLowerCase() === "class");
         if (classAttr) {
-          fetch(`/api/values/${classAttr._id}`)
+          fetch(`https://qms-sjuv.onrender.com/api/values/${classAttr._id}`)
             .then(res => res.json())
             .then(data => setClasses(data.filter(v => v.status === 'Active')));
         }
         const subjectAttr = attrs.find(a => a.name.toLowerCase() === "subject");
         if (subjectAttr) {
-          fetch(`/api/values/${subjectAttr._id}`)
+          fetch(`https://qms-sjuv.onrender.com/api/values/${subjectAttr._id}`)
             .then(res => res.json())
             .then(data => {
               setAllSubjects(data.filter(v => v.status === 'Active'));
@@ -52,7 +52,7 @@ export default function QuestionPapers({ onHomeClick }) {
         }
         const topicAttr = attrs.find(a => a.name.toLowerCase() === "topic");
         if (topicAttr) {
-          fetch(`/api/values/${topicAttr._id}`)
+          fetch(`https://qms-sjuv.onrender.com/api/values/${topicAttr._id}`)
             .then(res => res.json())
             .then(data => setTopics(data.filter(v => v.status === 'Active')));
         }
@@ -100,7 +100,7 @@ export default function QuestionPapers({ onHomeClick }) {
     }
     
     setLoadingQuestions(true);
-    fetch(`/api/questions?subjectId=${selectedSubject}`)
+    fetch(`https://qms-sjuv.onrender.com/api/questions?subjectId=${selectedSubject}`)
       .then(res => res.json())
       .then(data => {
         setAvailableQuestions(data);
@@ -185,7 +185,7 @@ export default function QuestionPapers({ onHomeClick }) {
   const fetchSavedPapers = async () => {
     setLoadingSavedPapers(true);
     try {
-      const response = await fetch('/api/question-papers');
+      const response = await fetch('https://qms-sjuv.onrender.com/api/question-papers');
       if (response.ok) {
         const data = await response.json();
         setSavedPapers(data);
@@ -210,7 +210,7 @@ export default function QuestionPapers({ onHomeClick }) {
     }
     
     try {
-      const response = await fetch(`/api/question-papers/${paperId}`, {
+      const response = await fetch(`https://qms-sjuv.onrender.com/api/question-papers/${paperId}`, {
         method: 'DELETE'
       });
       
@@ -338,7 +338,7 @@ export default function QuestionPapers({ onHomeClick }) {
       console.log('Saving question paper with data:', paperData);
       console.log('Making request to /api/question-papers');
       
-      const response = await fetch('/api/question-papers', {
+      const response = await fetch('https://qms-sjuv.onrender.com/api/question-papers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(paperData)
@@ -408,7 +408,7 @@ export default function QuestionPapers({ onHomeClick }) {
 
       console.log('Saving permit with data:', permitData);
       
-      const response = await fetch('/api/question-paper-permits', {
+      const response = await fetch('https://qms-sjuv.onrender.com/api/question-paper-permits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(permitData)
