@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
+import "./App.css";
+import { showToast } from "./Toast";
 
 // TopicsSection: shows topics for selected subject
 function TopicsSection({ subjectId, topics }) {
@@ -237,11 +239,11 @@ const [unlockedSubjects, setUnlockedSubjects] = useState([]);
   const handleAddQuestion = () => {
     // Basic validation
     if (!selectedBoard || !selectedClass || !selectedSubject || !selectedTopic || !selectedMarks || !selectedType || !questionText || !answerText) {
-      alert("Please fill all fields.");
+      showToast("Please fill all fields.", 'warning');
       return;
     }
     if ((selectedType === "single" || selectedType === "multiple") && optionInputs.some(opt => !opt.trim())) {
-      alert("Please fill all options.");
+      showToast("Please fill all options.", 'warning');
       return;
     }
     const payload = {
@@ -275,7 +277,7 @@ const [unlockedSubjects, setUnlockedSubjects] = useState([]);
         setQuestionText("");
         setAnswerText("");
       })
-      .catch(() => alert("Failed to add question. Please try again."));
+      .catch(() => showToast("Failed to add question. Please try again.", 'error'));
   };
   
 const handleSubjectClick = (subject) => {
@@ -347,7 +349,7 @@ const handleDelete = (id) => {
   })
   .catch(err => {
     console.error('Delete error:', err);
-    alert('Failed to delete question: ' + err.message);
+    showToast('Failed to delete question: ' + err.message, 'error');
   });
 };
 
@@ -396,7 +398,7 @@ const questionsByTopic = getQuestionsByTopic();
     const [localAnswer, setLocalAnswer] = useState("");
     const [localSubjects, setLocalSubjects] = useState([]);
 
-    // Fetch subjects for selected class in popup
+    // Fetch subjects for selected class.in popup
     useEffect(() => {
       if (!localClass) {
         setLocalSubjects([]);
@@ -446,11 +448,11 @@ const questionsByTopic = getQuestionsByTopic();
     // Add Question handler for popup
     const handleLocalAddQuestion = () => {
       if (!localBoard || !localClass || !localSubject || !localTopic || !localMarks || !localType || !localQuestion || !localAnswer) {
-        alert("Please fill all fields.");
+        showToast("Please fill all fields.", 'warning');
         return;
       }
       if ((localType === "single" || localType === "multiple") && localOptions.some(opt => !opt.trim())) {
-        alert("Please fill all options.");
+        showToast("Please fill all options.", 'warning');
         return;
       }
       const payload = {
@@ -474,7 +476,7 @@ const questionsByTopic = getQuestionsByTopic();
           setQuestions(qs => [...qs, data]);
           setShowAddPopup(false);
         })
-        .catch(() => alert("Failed to add question. Please try again."));
+        .catch(() => showToast("Failed to add question. Please try again.", 'error'));
     };
     
     
@@ -753,3 +755,4 @@ const questionsByTopic = getQuestionsByTopic();
     </div>
   );
 }
+

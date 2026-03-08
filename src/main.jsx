@@ -9,7 +9,7 @@ import AdminDashboard from './AdminDashboard';
 import AdminAttributeDashboard from './AdminAttributeDashboard';
 import AttributeMaster from './AttributeMaster';
 import Footer from './Footer';
-
+import ToastContainer from './Toast';
 
 function Root() {
   // Always start on main landing page (App.jsx)
@@ -73,6 +73,7 @@ function Root() {
   if (page === 'admin-dashboard') {
     return (
       <>
+        <ToastContainer />
         <AdminDashboard
           name={adminName}
           onLogout={() => {
@@ -92,6 +93,7 @@ function Root() {
   if (page === 'admin-attribute-dashboard') {
     return (
       <>
+        <ToastContainer />
         <AdminAttributeDashboard onHomeClick={() => setPage('admin-dashboard')} onAttributeMasterClick={() => setPage('attribute-master')} />
         <Footer />
       </>
@@ -100,6 +102,7 @@ function Root() {
   if (page === 'attribute-master') {
     return (
       <>
+        <ToastContainer />
         <AttributeMaster
           onHomeClick={() => setPage('admin-dashboard')}
           onLogout={() => {
@@ -116,6 +119,7 @@ function Root() {
   if (page === 'student-welcome') {
     return (
       <>
+        <ToastContainer />
         <StudentWelcome name={studentName} onStart={() => setPage('student-dashboard')} onBack={() => setPage('welcome')} />
         <Footer />
       </>
@@ -125,6 +129,7 @@ function Root() {
     const studentData = JSON.parse(localStorage.getItem('qms_studentData') || '{}');
     return (
       <>
+        <ToastContainer />
         <StudentDashboard 
           name={studentName}
           studentData={studentData}
@@ -157,3 +162,4 @@ root.render(
     <Root />
   </React.StrictMode>
 );
+

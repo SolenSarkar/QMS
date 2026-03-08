@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './App.css';
+import { showToast } from './Toast';
 
 function Welcome({ onSignIn, onBack, onStudentSignIn, onAdminSignIn }) {
   const [showAdminPassword, setShowAdminPassword] = useState(false);
@@ -54,10 +55,10 @@ function Welcome({ onSignIn, onBack, onStudentSignIn, onAdminSignIn }) {
         setStudent({ name: '', roll: '', day: '', month: '', year: '' });
       } else {
         // Login failed - show error
-        alert(data.error || 'Invalid credentials or account is inactive');
+        showToast(data.error || 'Invalid credentials or account is inactive', 'error');
       }
     } catch (err) {
-      alert('Error connecting to server. Please try again.');
+      showToast('Error connecting to server. Please try again.', 'error');
       console.error('Login error:', err);
     }
   };

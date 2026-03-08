@@ -323,13 +323,42 @@ const Student = mongoose.model('Student', studentSchema);
 
 const testRecordSchema = new mongoose.Schema({
   studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
+  questionPaperId: { type: mongoose.Schema.Types.ObjectId, ref: 'QuestionPaper', required: true },
   score: { type: Number, required: true },
   totalQuestions: { type: Number, required: true },
   correctAnswers: { type: Number, required: true },
   subjectName: { type: String },
-  testDate: { type: Date, default: Date.now }
+  testDate: { type: Date, default: Date.now },
+  // Store detailed question results for review
+  questionResults: { type: Array, default: [] }
 });
 const TestRecord = mongoose.model('TestRecord', testRecordSchema);
+
+// Query schema for student queries
+const querySchema = new mongoose.Schema({
+  studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
+  studentName: { type: String, required: true },
+  rollNumber: { type: String, required: true },
+  subject: { type: String },
+  message: { type: String, required: true },
+  status: { type: String, default: 'Pending' }, // Pending, Responded
+  adminResponse: { type: String },
+  createdAt: { type: Date, default: Date.now }
+});
+const Query = mongoose.model('Query', querySchema);
+
+// Feedback schema for student feedback
+const feedbackSchema = new mongoose.Schema({
+  studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
+  studentName: { type: String, required: true },
+  category: { type: String, default: 'General' }, // General, Website, Tests, Questions, Suggestions, Other
+  rating: { type: Number, required: true, min: 1, max: 5 },
+  message: { type: String, required: true },
+  status: { type: String, default: 'New' }, // New, Reviewed, Addressed
+  adminResponse: { type: String },
+  createdAt: { type: Date, default: Date.now }
+});
+const Feedback = mongoose.model('Feedback', feedbackSchema);
 
 // ==================== ADMIN APIs ====================
 
@@ -675,15 +704,17 @@ app.get('/api/test-records/:studentId', async (req, res) => {
 
 app.post('/api/test-records', async (req, res) => {
   try {
-    const { studentId, score, totalQuestions, correctAnswers, subjectName } = req.body;
+    const { studentId, questionPaperId, score, totalQuestions, correctAnswers, subjectName, questionResults } = req.body;
     
     const testRecord = new TestRecord({
       studentId,
+      questionPaperId,
       score,
       totalQuestions,
-      correctAnswers,
+      correctAnswers: correctAnswers,
       subjectName,
-      testDate: new Date()
+      testDate: new Date(),
+      questionResults: questionResults || []
     });
     await testRecord.save();
     
@@ -697,6 +728,60 @@ app.post('/api/test-records', async (req, res) => {
     res.status(201).json(testRecord);
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+});
+
+// Get detailed test record with question results
+app.get('/api/test-records/detail/:recordId', async (req, res) => {
+  try {
+    const record = await TestRecord.findById(req.params.recordId)
+      .populate('studentId', 'name rollNumber')
+      .populate('questionPaperId');
+    
+    if (!record) {
+      return res.status(404).json({ error: 'Test record not found' });
+    }
+    
+    res.json(record);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE test record - allows admin to delete a student's attempt so they can retake
+app.delete('/api/test-records/:id', async (req, res) => {
+  try {
+    const testRecord = await TestRecord.findById(req.params.id);
+    if (!testRecord) {
+      return res.status(404).json({ error: 'Test record not found' });
+    }
+    
+    // Optionally: revert student's score
+    const student = await Student.findById(testRecord.studentId);
+    if (student) {
+      student.totalScore = Math.max(0, student.totalScore - testRecord.score);
+      student.testsTaken = Math.max(0, student.testsTaken - 1);
+      await student.save();
+    }
+    
+    await TestRecord.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Test record deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Check if student has already attempted a specific question paper
+app.get('/api/test-records/check/:studentId/:questionPaperId', async (req, res) => {
+  try {
+    const { studentId, questionPaperId } = req.params;
+    const existingRecord = await TestRecord.findOne({ 
+      studentId, 
+      questionPaperId 
+    });
+    res.json({ hasAttempted: !!existingRecord, record: existingRecord });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -715,6 +800,160 @@ app.get('/api/seed-admin', async (req, res) => {
     });
     await admin.save();
     res.json({ message: 'Default admin created', admin });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==================== QUERY APIs ====================
+
+// Student submits a query
+app.post('/api/queries', async (req, res) => {
+  try {
+    const { studentId, studentName, rollNumber, subject, message } = req.body;
+    
+    const query = new Query({
+      studentId,
+      studentName,
+      rollNumber,
+      subject,
+      message,
+      status: 'Pending'
+    });
+    await query.save();
+    res.status(201).json(query);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Get queries for a specific student
+app.get('/api/queries/student/:studentId', async (req, res) => {
+  try {
+    const queries = await Query.find({ studentId: req.params.studentId })
+      .sort({ createdAt: -1 });
+    res.json(queries);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get all queries (for admin)
+app.get('/api/queries', async (req, res) => {
+  try {
+    const queries = await Query.find().sort({ createdAt: -1 });
+    res.json(queries);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin responds to a query
+app.put('/api/queries/:id/respond', async (req, res) => {
+  try {
+    const { adminResponse } = req.body;
+    const query = await Query.findByIdAndUpdate(
+      req.params.id,
+      { 
+        adminResponse,
+        status: 'Responded'
+      },
+      { new: true }
+    );
+    if (!query) {
+      return res.status(404).json({ error: 'Query not found' });
+    }
+    res.json(query);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Delete a query
+app.delete('/api/queries/:id', async (req, res) => {
+  try {
+    const query = await Query.findByIdAndDelete(req.params.id);
+    if (!query) {
+      return res.status(404).json({ error: 'Query not found' });
+    }
+    res.json({ message: 'Query deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==================== FEEDBACK APIs ====================
+
+// Student submits feedback
+app.post('/api/feedback', async (req, res) => {
+  try {
+    const { studentId, studentName, category, rating, message } = req.body;
+    
+    const feedback = new Feedback({
+      studentId,
+      studentName,
+      category: category || 'General',
+      rating,
+      message,
+      status: 'New'
+    });
+    await feedback.save();
+    res.status(201).json(feedback);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Get feedback for a specific student
+app.get('/api/feedback/student/:studentId', async (req, res) => {
+  try {
+    const feedbacks = await Feedback.find({ studentId: req.params.studentId })
+      .sort({ createdAt: -1 });
+    res.json(feedbacks);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get all feedback (for admin)
+app.get('/api/feedback', async (req, res) => {
+  try {
+    const feedbacks = await Feedback.find().sort({ createdAt: -1 });
+    res.json(feedbacks);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin responds to feedback
+app.put('/api/feedback/:id/respond', async (req, res) => {
+  try {
+    const { adminResponse, status } = req.body;
+    const feedback = await Feedback.findByIdAndUpdate(
+      req.params.id,
+      { 
+        adminResponse,
+        status: status || 'Reviewed'
+      },
+      { new: true }
+    );
+    if (!feedback) {
+      return res.status(404).json({ error: 'Feedback not found' });
+    }
+    res.json(feedback);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Delete feedback
+app.delete('/api/feedback/:id', async (req, res) => {
+  try {
+    const feedback = await Feedback.findByIdAndDelete(req.params.id);
+    if (!feedback) {
+      return res.status(404).json({ error: 'Feedback not found' });
+    }
+    res.json({ message: 'Feedback deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

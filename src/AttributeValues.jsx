@@ -1,5 +1,6 @@
-
 import React, { useState, useEffect } from "react";
+import "./App.css";
+import { showToast } from "./Toast";
 
 const AttributeValues = ({ onHomeClick }) => {
 
@@ -102,18 +103,18 @@ const AttributeValues = ({ onHomeClick }) => {
     const attr = attributes.find(a => a._id === selectedAttribute);
     // If Subject, require class selection
     if (attr && attr.name.toLowerCase() === "subject" && !selectedClass) {
-      alert("Please select a class for the subject.");
+      showToast("Please select a class for the subject.", 'warning');
       return;
     }
     // If Subject and class 11/12, require stream (case-insensitive, allow e.g. '11', '11th', '11TH')
     const className = getClassNameById(selectedClass).toLowerCase();
     const isClass11or12 = /(^|\D)11(\D|$)/.test(className) || /(^|\D)12(\D|$)/.test(className);
     if (attr && attr.name.toLowerCase() === "subject" && isClass11or12 && !selectedStream) {
-      alert("Please select a stream for class 11 or 12.");
+      showToast("Please select a stream for class 11 or 12.", 'warning');
       return;
     }
     if (attr && attr.name.toLowerCase() === "subject" && isClass11or12 && selectedStream === "other" && !customStream.trim()) {
-      alert("Please specify the stream name.");
+      showToast("Please specify the stream name.", 'warning');
       return;
     }
 const payload = {
@@ -451,3 +452,4 @@ const payload = {
       };
 
 export default AttributeValues;
+

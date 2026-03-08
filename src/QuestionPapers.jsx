@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
+import { showToast } from "./Toast";
 
 export default function QuestionPapers({ onHomeClick }) {
   const [boards, setBoards] = useState([]);
@@ -214,16 +215,16 @@ export default function QuestionPapers({ onHomeClick }) {
       });
       
       if (response.ok) {
-        alert('Question paper deleted successfully!');
+        showToast('Question paper deleted successfully!', 'success');
         fetchSavedPapers();
         setSelectedSavedPaper(null);
       } else {
         const result = await response.json();
-        alert(`Failed to delete: ${result.error || 'Unknown error'}`);
+        showToast(`Failed to delete: ${result.error || 'Unknown error'}`, 'error');
       }
     } catch (err) {
       console.error('Error deleting paper:', err);
-      alert('Error deleting question paper');
+      showToast('Error deleting question paper', 'error');
     }
   };
 
@@ -234,7 +235,7 @@ export default function QuestionPapers({ onHomeClick }) {
     
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
-      alert('Please allow popups to download the PDF');
+      showToast('Please allow popups to download the PDF', 'warning');
       return;
     }
     
@@ -351,7 +352,7 @@ export default function QuestionPapers({ onHomeClick }) {
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text();
         console.error('Non-JSON response:', text);
-        alert(`Failed to save question paper. Server returned status ${response.status}. Please check if the backend server is running.`);
+        showToast(`Failed to save question paper. Server returned status ${response.status}. Please check if the backend server is running.`, 'error');
         setShowPreview(false);
         return;
       }
@@ -360,13 +361,13 @@ export default function QuestionPapers({ onHomeClick }) {
       console.log('Save response:', response.status, result);
       
       if (response.ok) {
-        alert('Question paper saved successfully!');
+        showToast('Question paper saved successfully!', 'success');
       } else {
-        alert(`Failed to save question paper: ${result.error || 'Unknown error'}`);
+        showToast(`Failed to save question paper: ${result.error || 'Unknown error'}`, 'error');
       }
     } catch (err) {
       console.error('Error saving question paper:', err);
-      alert(`Error saving question paper: ${err.message}. Please check if the backend server is running on port 5000.`);
+      showToast(`Error saving question paper: ${err.message}. Please check if the backend server is running on port 5000.`, 'error');
     }
     setShowPreview(false);
   };
@@ -380,19 +381,19 @@ export default function QuestionPapers({ onHomeClick }) {
   // Save permit settings
   const savePermit = async () => {
     if (!permitPaper) {
-      alert('Please select a question paper to permit');
+      showToast('Please select a question paper to permit', 'warning');
       return;
     }
     if (!startDate || !endDate) {
-      alert('Please select both start and end dates');
+      showToast('Please select both start and end dates', 'warning');
       return;
     }
     if (new Date(startDate) >= new Date(endDate)) {
-      alert('End date must be after start date');
+      showToast('End date must be after start date', 'warning');
       return;
     }
     if (timeLimit <= 0) {
-      alert('Please enter a valid time limit');
+      showToast('Please enter a valid time limit', 'warning');
       return;
     }
 
@@ -414,7 +415,7 @@ export default function QuestionPapers({ onHomeClick }) {
       });
 
       if (response.ok) {
-        alert('Permit saved successfully! Students can now access this question paper during the specified time.');
+        showToast('Permit saved successfully! Students can now access this question paper during the specified time.', 'success');
         // Reset form
         setPermitPaper(null);
         setStartDate("");
@@ -422,11 +423,11 @@ export default function QuestionPapers({ onHomeClick }) {
         setTimeLimit(60);
       } else {
         const result = await response.json();
-        alert(`Failed to save permit: ${result.error || 'Unknown error'}`);
+        showToast(`Failed to save permit: ${result.error || 'Unknown error'}`, 'error');
       }
     } catch (err) {
       console.error('Error saving permit:', err);
-      alert(`Error saving permit: ${err.message}`);
+      showToast(`Error saving permit: ${err.message}`, 'error');
     }
   };
 
@@ -708,7 +709,7 @@ export default function QuestionPapers({ onHomeClick }) {
         </div>
       )}
 
-      {/* Permit Question Papers View */}
+      {/* permit Question Papers View */}
       {viewMode === 'permit' && (
         <div style={{ 
           background: '#fff', 
@@ -920,3 +921,4 @@ export default function QuestionPapers({ onHomeClick }) {
     </div>
   );
 }
+

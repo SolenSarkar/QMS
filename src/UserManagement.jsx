@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
+import { showToast } from "./Toast";
 
 export default function UserManagement({ onHomeClick }) {
   const [activeTab, setActiveTab] = useState("students"); // 'students' or 'admins'
@@ -8,12 +9,12 @@ export default function UserManagement({ onHomeClick }) {
   const [loading, setLoading] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
-  
+
   // Test records state
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [testRecords, setTestRecords] = useState([]);
   const [loadingTestRecords, setLoadingTestRecords] = useState(false);
-  
+
   // Form states
   const [formData, setFormData] = useState({
     name: "",
@@ -151,7 +152,7 @@ export default function UserManagement({ onHomeClick }) {
           });
           if (!res.ok) {
             const err = await res.json();
-            alert(`Error updating student: ${err.error || 'Unknown error'}`);
+            showToast(`Error updating student: ${err.error || 'Unknown error'}`, 'error');
             return;
           }
         } else {
@@ -163,7 +164,7 @@ export default function UserManagement({ onHomeClick }) {
           });
           if (!res.ok) {
             const err = await res.json();
-            alert(`Error creating student: ${err.error || 'Unknown error'}`);
+            showToast(`Error creating student: ${err.error || 'Unknown error'}`, 'error');
             return;
           }
           const data = await res.json();
@@ -180,7 +181,7 @@ export default function UserManagement({ onHomeClick }) {
           });
           if (!res.ok) {
             const err = await res.json();
-            alert(`Error updating admin: ${err.error || 'Unknown error'}`);
+            showToast(`Error updating admin: ${err.error || 'Unknown error'}`, 'error');
             return;
           }
         } else {
@@ -192,7 +193,7 @@ export default function UserManagement({ onHomeClick }) {
           });
           if (!res.ok) {
             const err = await res.json();
-            alert(`Error creating admin: ${err.error || 'Unknown error'}`);
+            showToast(`Error creating admin: ${err.error || 'Unknown error'}`, 'error');
             return;
           }
         }
@@ -201,7 +202,7 @@ export default function UserManagement({ onHomeClick }) {
       fetchUsers();
     } catch (err) {
       console.error("Error saving user:", err);
-      alert(`Error saving user: ${err.message}. Please try again.`);
+      showToast(`Error saving user: ${err.message}. Please try again.`, 'error');
       return;
     }
   };
@@ -232,6 +233,28 @@ export default function UserManagement({ onHomeClick }) {
       fetchUsers();
     } catch (err) {
       console.error("Error deleting user:", err);
+    }
+  };
+
+  // Delete test record - allows admin to delete a student's attempt so they can retake
+  const deleteTestRecord = async (recordId) => {
+    if (!window.confirm("Are you sure you want to delete this test attempt? This will allow the student to retake the test.")) return;
+    try {
+      const res = await fetch(`/api/test-records/${recordId}`, { method: "DELETE" });
+      if (res.ok) {
+        // Refresh test records
+        const response = await fetch(`/api/test-records/${selectedStudent._id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setTestRecords(data);
+        }
+        showToast("Test attempt deleted successfully. Student can now retake the test.", 'success');
+      } else {
+        showToast("Failed to delete test record.", 'error');
+      }
+    } catch (err) {
+      console.error("Error deleting test record:", err);
+      showToast("Error deleting test record.", 'error');
     }
   };
 
@@ -338,11 +361,10 @@ export default function UserManagement({ onHomeClick }) {
                   <tr key={student._id}>
                     <td>{formatId(student._id)}</td>
                     <td>
-                      <span 
+                      <span
                         style={{ color: '#1976d2', cursor: 'pointer', fontWeight: 600 }}
                         onClick={() => {
                           setSelectedStudent(student);
-                          // Fetch test records for this student
                           setLoadingTestRecords(true);
                           fetch(`/api/test-records/${student._id}`)
                             .then(res => res.json())
@@ -571,15 +593,16 @@ export default function UserManagement({ onHomeClick }) {
                       <th style={{ padding: 10, textAlign: 'left', borderBottom: '1px solid #ddd' }}>Subject</th>
                       <th style={{ padding: 10, textAlign: 'center', borderBottom: '1px solid #ddd' }}>Score</th>
                       <th style={{ padding: 10, textAlign: 'center', borderBottom: '1px solid #ddd' }}>Correct</th>
+                      <th style={{ padding: 10, textAlign: 'center', borderBottom: '1px solid #ddd' }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {testRecords.map((record, index) => (
                       <tr key={index} style={{ borderBottom: '1px solid #eee' }}>
                         <td style={{ padding: 10 }}>
-                          {new Date(record.testDate).toLocaleDateString('en-GB', { 
-                            day: '2-digit', 
-                            month: 'short', 
+                          {new Date(record.testDate).toLocaleDateString('en-GB', {
+                            day: '2-digit',
+                            month: 'short',
                             year: 'numeric',
                             hour: '2-digit',
                             minute: '2-digit'
@@ -588,6 +611,24 @@ export default function UserManagement({ onHomeClick }) {
                         <td style={{ padding: 10 }}>{record.subjectName || '-'}</td>
                         <td style={{ padding: 10, textAlign: 'center' }}>{record.score}</td>
                         <td style={{ padding: 10, textAlign: 'center' }}>{record.correctAnswers}/{record.totalQuestions}</td>
+                        <td style={{ padding: 10, textAlign: 'center' }}>
+                          <button
+                            onClick={() => deleteTestRecord(record._id)}
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: 4,
+                              border: 'none',
+                              backgroundColor: '#f44336',
+                              color: '#fff',
+                              fontSize: '0.8em',
+                              cursor: 'pointer',
+                              fontWeight: 600
+                            }}
+                            title="Delete this attempt to allow student to retake"
+                          >
+                            Delete
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
