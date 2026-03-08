@@ -12,31 +12,16 @@ import Footer from './Footer';
 import ToastContainer from './Toast';
 
 function Root() {
-  // Always start on main landing page (App.jsx)
-  React.useEffect(() => {
-    localStorage.removeItem('qms_page');
-    localStorage.removeItem('qms_studentName');
-  }, []);
   const [page, setPage] = React.useState('main');
   const [studentName, setStudentName] = React.useState('');
   const [adminName, setAdminName] = React.useState('');
 
-  // Persist state to localStorage on change
-  React.useEffect(() => {
-    localStorage.setItem('qms_page', page);
-  }, [page]);
-  React.useEffect(() => {
-    localStorage.setItem('qms_studentName', studentName);
-  }, [studentName]);
-
-  console.log('Current page:', page);
   React.useEffect(() => {
     if (page === 'main' || page === 'student-welcome') {
       document.body.classList.add('student-welcome-center');
     } else {
       document.body.classList.remove('student-welcome-center');
     }
-    // Remove flex from #root for admin pages
     const root = document.getElementById('root');
     if (root) {
       if (page === 'main' || page === 'student-welcome') {
@@ -52,6 +37,7 @@ function Root() {
       }
     }
   }, [page]);
+  
   if (page === 'main') {
     return <App onGetStarted={() => setPage('welcome')} />;
   }
@@ -59,7 +45,6 @@ function Root() {
     return <Welcome
       onStudentSignIn={(name, studentData) => { 
         setStudentName(name); 
-        // Store student data in localStorage for persistence
         if (studentData) {
           localStorage.setItem('qms_studentData', JSON.stringify(studentData));
         }
@@ -80,8 +65,6 @@ function Root() {
             setPage('welcome');
             setStudentName('');
             setAdminName('');
-            localStorage.removeItem('qms_page');
-            localStorage.removeItem('qms_studentName');
           }}
           onDashboardClick={() => setPage('admin-attribute-dashboard')}
           onHomeClick={() => setPage('admin-dashboard')}
@@ -108,8 +91,6 @@ function Root() {
           onLogout={() => {
             setPage('welcome');
             setStudentName('');
-            localStorage.removeItem('qms_page');
-            localStorage.removeItem('qms_studentName');
           }}
         />
         <Footer />
@@ -136,16 +117,10 @@ function Root() {
           onProjectTitleClick={() => {
             setPage('main');
             setStudentName('');
-            localStorage.removeItem('qms_page');
-            localStorage.removeItem('qms_studentName');
-            localStorage.removeItem('qms_studentData');
           }}
           onLogout={() => {
             setPage('welcome');
             setStudentName('');
-            localStorage.removeItem('qms_page');
-            localStorage.removeItem('qms_studentName');
-            localStorage.removeItem('qms_studentData');
           }}
         />
         <Footer />
@@ -154,7 +129,6 @@ function Root() {
   }
   return null;
 }
-
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

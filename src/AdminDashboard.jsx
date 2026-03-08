@@ -4,7 +4,7 @@ import { showToast } from "./Toast";
 import AttributeMaster from "./AttributeMaster";
 import AttributeValues from "./AttributeValues";
 import QuestionsPage from "./Questions";
-import UserManagement from "./UserManagement";
+import UserManagement from "./UserManagement.jsx";
 import QuestionPapers from "./QuestionPapers";
 import SettingsPage from "./SettingsPage";
 import Results from "./Results";

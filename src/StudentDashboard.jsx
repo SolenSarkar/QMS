@@ -28,6 +28,8 @@ function StudentDashboard({ name, studentData, onProjectTitleClick, onLogout }) 
 
   const [testRecords, setTestRecords] = useState([]);
   const [loadingResults, setLoadingResults] = useState(false);
+  const [loadingTestCard, setLoadingTestCard] = useState(true);
+  const [attemptedPapers, setAttemptedPapers] = useState({}); // Track which papers have been attempted
 
   const [activeTest, setActiveTest] = useState(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -40,6 +42,20 @@ function StudentDashboard({ name, studentData, onProjectTitleClick, onLogout }) 
   const [testResult, setTestResult] = useState(null);
 const [showTestStartReminder, setShowTestStartReminder] = useState(false);
   const [showExitWarning, setShowExitWarning] = useState(false);
+
+  // Query management state
+  const [queries, setQueries] = useState([]);
+  const [loadingQueries, setLoadingQueries] = useState(false);
+  const [showQueryModal, setShowQueryModal] = useState(false);
+  const [newQuery, setNewQuery] = useState({ subject: '', message: '' });
+  const [submittingQuery, setSubmittingQuery] = useState(false);
+
+  // Feedback management state
+  const [feedbacks, setFeedbacks] = useState([]);
+  const [loadingFeedbacks, setLoadingFeedbacks] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [newFeedback, setNewFeedback] = useState({ category: '', rating: 5, message: '' });
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
   useEffect(() => {
     if (!activeTest || testTimeLeft <= 0 || testSubmitted) return;
@@ -190,10 +206,10 @@ useEffect(() => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [activeTest, testSubmitted]);
 
-  const startTest = async (paper) => {
+      const startTest = async (paper) => {
     
     try {
-      const permitsRes = await fetch("http://localhost:5000/api/question-paper-permits");
+      const permitsRes = await fetch("/api/question-paper-permits");
       const permits = await permitsRes.json();
       const now = new Date();
       const paperPermit = permits.find(permit => {
@@ -211,11 +227,12 @@ useEffect(() => {
         return;
       }
 
-      const checkRes = await fetch(`http://localhost:5000/api/test-records/check/${studentId}/${paper._id}`);
+      const checkRes = await fetch(`/api/test-records/check/${studentId}/${paper._id}`);
       const checkData = await checkRes.json();
       
       if (checkData.hasAttempted) {
-        
+        showToast('You have already attempted this test. You cannot attempt it again.', 'error');
+        return;
       }
 
       const timeLimit = paperPermit.timeLimit || 60;
@@ -375,7 +392,7 @@ useEffect(() => {
         submittedAt: new Date()
       };
 
-      const response = await fetch('http://localhost:5000/api/test-records', {
+      const response = await fetch('/api/test-records', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -392,7 +409,7 @@ useEffect(() => {
       if (response.ok) {
         setTestResult(result);
         setTestSubmitted(true);
-        const recordsRes = await fetch(`http://localhost:5000/api/test-records/${studentId}`);
+        const recordsRes = await fetch(`/api/test-records/${studentId}`);
         if (recordsRes.ok) {
           const recordsData = await recordsRes.json();
           setTestRecords(recordsData);
@@ -448,14 +465,14 @@ useEffect(() => {
     }
     const fetchData = async () => {
       try {
-        const attrsRes = await fetch("http://localhost:5000/api/attributes");
+        const attrsRes = await fetch("/api/attributes");
         const attrs = await attrsRes.json();
         const subjectAttr = attrs.find(a => a.name && a.name.toLowerCase() === "subject");
         if (!subjectAttr) {
           setLoading(false);
           return;
         }
-        const subjectsRes = await fetch(`http://localhost:5000/api/values/${subjectAttr._id}`);
+        const subjectsRes = await fetch(`/api/values/${subjectAttr._id}`);
         const subjectsData = await subjectsRes.json();
         const classIdStr = normalizeId(classId);
         const filteredSubjects = subjectsData.filter(s => {
@@ -464,7 +481,7 @@ useEffect(() => {
         });
         setSubjects(filteredSubjects);
 
-        const questionsRes = await fetch("http://localhost:5000/api/questions");
+        const questionsRes = await fetch("/api/questions");
         const questions = await questionsRes.json();
         const subjectQuestionMap = {};
         questions.forEach(q => {
@@ -486,14 +503,42 @@ useEffect(() => {
     fetchData();
   }, [classId]);
 
+  // Fetch test records for TestCard on component mount
+  useEffect(() => {
+    if (!studentId) {
+      setLoadingTestCard(false);
+      return;
+    }
+    const fetchTestCardData = async () => {
+      try {
+        const response = await fetch(`/api/test-records/${studentId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setTestRecords(data);
+        }
+      } catch (err) {
+        console.error("Error fetching test card records:", err);
+      }
+      setLoadingTestCard(false);
+    };
+    fetchTestCardData();
+  }, [studentId]);
+
   useEffect(() => {
     if (activeTab === 'mytest' && studentId) {
       const fetchRecords = async () => {
         try {
-          const response = await fetch(`http://localhost:5000/api/test-records/${studentId}`);
+          const response = await fetch(`/api/test-records/${studentId}`);
           if (response.ok) {
             const data = await response.json();
             setTestRecords(data);
+            // Build attempted papers map
+            const attempted = {};
+            data.forEach(record => {
+              const paperId = normalizeId(record.questionPaperId);
+              attempted[paperId] = true;
+            });
+            setAttemptedPapers(attempted);
           }
         } catch (err) {
           console.error("Error fetching test records:", err);
@@ -508,9 +553,9 @@ useEffect(() => {
     const fetchTestPapers = async () => {
       setLoadingPapers(true);
       try {
-        const papersRes = await fetch("http://localhost:5000/api/question-papers");
+        const papersRes = await fetch("/api/question-papers");
         const papers = await papersRes.json();
-        const permitsRes = await fetch("http://localhost:5000/api/question-paper-permits");
+        const permitsRes = await fetch("/api/question-paper-permits");
         const permits = await permitsRes.json();
         const now = new Date();
         const classIdStr = normalizeId(classId);
@@ -544,14 +589,14 @@ useEffect(() => {
     fetchTestPapers();
   }, [selectedTestSubject, selectedDifficulty, classId, activeTab, studentId]);
 
-  useEffect(() => {
+useEffect(() => {
     if (activeTab !== 'results' || !studentId) {
       return;
     }
     const fetchTestRecords = async () => {
       setLoadingResults(true);
       try {
-        const response = await fetch(`http://localhost:5000/api/test-records/${studentId}`);
+        const response = await fetch(`/api/test-records/${studentId}`);
         if (response.ok) {
           const data = await response.json();
           setTestRecords(data);
@@ -564,6 +609,180 @@ useEffect(() => {
     fetchTestRecords();
   }, [activeTab, studentId]);
 
+  // Fetch queries when queries tab is active
+  useEffect(() => {
+    if (activeTab !== 'queries' || !studentId) return;
+    
+    const fetchQueries = async () => {
+      setLoadingQueries(true);
+      try {
+        const response = await fetch(`/api/queries/student/${studentId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setQueries(data);
+        }
+      } catch (err) {
+        console.error('Error fetching queries:', err);
+      }
+      setLoadingQueries(false);
+    };
+    
+    fetchQueries();
+  }, [activeTab, studentId]);
+
+  // Fetch feedback when feedback tab is active
+  useEffect(() => {
+    if (activeTab !== 'feedback' || !studentId) return;
+    
+    const fetchFeedback = async () => {
+      setLoadingFeedbacks(true);
+      try {
+        const response = await fetch(`/api/feedback/student/${studentId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setFeedbacks(data);
+        }
+      } catch (err) {
+        console.error('Error fetching feedback:', err);
+      }
+      setLoadingFeedbacks(false);
+    };
+    
+    fetchFeedback();
+  }, [activeTab, studentId]);
+
+  // Submit a new feedback
+  const handleSubmitQuery = async () => {
+    if (!newQuery.message.trim()) {
+      showToast('Please enter your query message', 'warning');
+      return;
+    }
+    
+    setSubmittingQuery(true);
+    try {
+      const response = await fetch('/api/queries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentId,
+          studentName: name,
+          rollNumber,
+          subject: newQuery.subject,
+          message: newQuery.message
+        })
+      });
+      
+      if (response.ok) {
+        showToast('Query submitted successfully!', 'success');
+        setShowQueryModal(false);
+        setNewQuery({ subject: '', message: '' });
+        // Refresh queries list
+        const queriesRes = await fetch(`/api/queries/student/${studentId}`);
+        if (queriesRes.ok) {
+          const data = await queriesRes.json();
+          setQueries(data);
+        }
+      } else {
+        showToast('Failed to submit query. Please try again.', 'error');
+      }
+    } catch (err) {
+      console.error('Error submitting query:', err);
+      showToast('Error connecting to server.', 'error');
+    }
+    setSubmittingQuery(false);
+  };
+
+  // Render Queries Tab
+  const renderQueriesTab = () => {
+    return (
+      <div style={{ padding: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <h2 style={{ margin: 0, color: '#333' }}>My Queries</h2>
+          <button 
+            className="cta-button" 
+            onClick={() => setShowQueryModal(true)}
+            style={{ padding: '10px 20px' }}
+          >
+            + Submit New Query
+          </button>
+        </div>
+        
+        {loadingQueries ? (
+          <p style={{ textAlign: 'center', padding: 40, color: '#666' }}>Loading queries...</p>
+        ) : queries.length === 0 ? (
+          <div style={{ 
+            background: '#fff', 
+            borderRadius: 12, 
+            padding: 40, 
+            textAlign: 'center',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+          }}>
+            <p style={{ fontSize: '1.1em', color: '#888', marginBottom: 8 }}>You haven't submitted any queries yet.</p>
+            <p style={{ color: '#666' }}>Click "Submit New Query" to ask a question to the admin.</p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: 16 }}>
+            {queries.map((query) => (
+              <div 
+                key={query._id}
+                style={{
+                  background: '#fff',
+                  borderRadius: 12,
+                  padding: 20,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  borderLeft: `4px solid ${query.status === 'Responded' ? '#4caf50' : '#ff9800'}`
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                  <div>
+                    <h3 style={{ margin: '0 0 4px 0', color: '#333', fontSize: '1.1em' }}>
+                      {query.subject || 'General Inquiry'}
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '0.85em', color: '#888' }}>
+                      Submitted on: {query.createdAt ? new Date(query.createdAt).toLocaleDateString('en-GB', { 
+                        day: '2-digit', 
+                        month: 'short', 
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      }) : 'Unknown'}
+                    </p>
+                  </div>
+                  <span style={{
+                    padding: '4px 12px',
+                    borderRadius: 12,
+                    fontSize: '0.85em',
+                    fontWeight: 600,
+                    backgroundColor: query.status === 'Responded' ? '#4caf50' : '#ff9800',
+                    color: '#fff'
+                  }}>
+                    {query.status === 'Responded' ? '✓ Resolved' : '⏳ Pending'}
+                  </span>
+                </div>
+                
+                <div style={{ marginBottom: 12 }}>
+                  <p style={{ margin: '0 0 8px 0', fontWeight: 600, color: '#444' }}>Your Message:</p>
+                  <p style={{ margin: 0, color: '#666', lineHeight: 1.5 }}>{query.message}</p>
+                </div>
+                
+                {query.adminResponse && (
+                  <div style={{ 
+                    background: '#e8f5e9', 
+                    borderRadius: 8, 
+                    padding: 16
+                  }}>
+                    <p style={{ margin: '0 0 8px 0', fontWeight: 600, color: '#2e7d32' }}>Admin Response:</p>
+                    <p style={{ margin: 0, color: '#333', lineHeight: 1.5 }}>{query.adminResponse}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const handleProfileChange = (e) => {
     const { name, value } = e.target;
     setProfileData(prev => ({ ...prev, [name]: value }));
@@ -573,7 +792,7 @@ useEffect(() => {
     setSaving(true);
     setSaveMessage('');
     try {
-      const response = await fetch(`http://localhost:5000/api/students/${studentId}`, {
+      const response = await fetch(`/api/students/${studentId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -644,6 +863,32 @@ useEffect(() => {
     }, 250);
   };
 
+  // Function to handle review button click - fetches detailed answers if not present
+  const handleReviewClick = async (record) => {
+    try {
+      // First check if answers already exist in the record
+      if (record.answers && record.answers.length > 0) {
+        setReviewRecord(record);
+        setShowReviewModal(true);
+        return;
+      }
+      
+      // If answers don't exist, fetch detailed record from API
+      const response = await fetch(`/api/test-records/detail/${record._id}`);
+      if (response.ok) {
+        const detailedRecord = await response.json();
+        setReviewRecord(detailedRecord);
+      } else {
+        // Fallback to original record if API fails
+        setReviewRecord(record);
+      }
+    } catch (err) {
+      console.error("Error fetching detailed record:", err);
+      setReviewRecord(record);
+    }
+    setShowReviewModal(true);
+  };
+
   const renderMyTestTab = () => {
     return (
       <div style={{ padding: '20px' }}>
@@ -665,7 +910,7 @@ useEffect(() => {
                     <div style={{ fontSize: '1.5em', fontWeight: 'bold', color: record.score >= (record.totalQuestions * 0.7) ? '#4caf50' : record.score >= (record.totalQuestions * 0.5) ? '#ff9800' : '#f44336' }}>
                       {record.score}/{record.totalQuestions}
                     </div>
-                    <button className="cta-button" style={{ padding: '6px 12px', fontSize: '0.8em', marginTop: 4 }} onClick={() => { setReviewRecord(record); setShowReviewModal(true); }}>Review</button>
+                    <button className="cta-button" style={{ padding: '6px 12px', fontSize: '0.8em', marginTop: 4 }} onClick={() => handleReviewClick(record)}>Review</button>
                   </div>
                 </div>
               ))}
@@ -702,18 +947,27 @@ useEffect(() => {
             </div>
           ) : (
             <div style={{ display: 'grid', gap: 16 }}>
-              {testPapers.map(paper => (
-                <div key={paper._id} style={{ border: '1px solid #e0e0e0', borderRadius: 8, padding: 16, background: '#f9f9f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              {testPapers.map(paper => {
+                const paperId = normalizeId(paper._id);
+                const isAttempted = attemptedPapers[paperId];
+                return (
+                <div key={paper._id} style={{ border: '1px solid #e0e0e0', borderRadius: 8, padding: 16, background: isAttempted ? '#f5f5f5' : '#f9f9f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <h4 style={{ margin: '0 0 8px 0', color: '#1976d2' }}>{paper.subject} - {paper.class}</h4>
+                    <h4 style={{ margin: '0 0 8px 0', color: '#1976d2' }}>{paper.subject} - {paper.class} {isAttempted && <span style={{ fontSize: '0.8em', color: '#f44336', fontWeight: 600 }}>(Attempted)</span>}</h4>
                     <p style={{ margin: '4px 0', fontSize: '0.9em' }}><strong>Difficulty:</strong> {paper.difficulty} | <strong> Questions:</strong> {paper.totalQuestions} | <strong> Marks:</strong> {paper.totalMarks}</p>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="cta-button" onClick={() => { setSelectedPaper(paper); setShowPaperPreview(true); }} style={{ padding: '8px 16px', fontSize: '0.9em' }}>View Paper</button>
-                    <button className="cta-button" onClick={() => startTest(paper)} style={{ padding: '8px 16px', fontSize: '0.9em', background: '#4caf50' }}>Start Test</button>
+                    <button 
+                      className="cta-button" 
+                      onClick={() => startTest(paper)} 
+                      style={{ padding: '8px 16px', fontSize: '0.9em', background: isAttempted ? '#9e9e9e' : '#4caf50', cursor: isAttempted ? 'not-allowed' : 'pointer' }}
+                      disabled={isAttempted}
+                    >
+                      {isAttempted ? 'Attempted' : 'Start Test'}
+                    </button>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           )}
         </div>
@@ -747,8 +1001,168 @@ useEffect(() => {
                 })}
               </div>
             )}
+            
+            {/* Feedback Section in Main Panel */}
+            <div className="feedback-section" style={{borderStyle:'double',borderWidth:'7px',borderRadius:'10px',borderColor:'#550f86',marginTop:'30px',padding:'20px'}}>
+              <h3 style={{marginBottom:'35px'}}>Feedback</h3>
+              <div className="feedback-card">
+                <p>
+                  We value your feedback! Let us know about your experience with the quiz system, any issues you face, or suggestions for improvement.
+                </p>
+                <button 
+                  className="cta-button" 
+                  onClick={() => setShowFeedbackModal(true)}
+                >
+                  + Submit Feedback
+                </button>
+              </div>
+            </div>
           </div>
           <div className="dashboard-side-panel">
+            {/* Performance Section */}
+            {testRecords.length > 0 && (() => {
+              // Calculate subject-wise performance
+              const subjectPerformance = {};
+              testRecords.forEach(record => {
+                const subjectName = record.subjectName || 'Unknown';
+                if (!subjectPerformance[subjectName]) {
+                  subjectPerformance[subjectName] = { totalScore: 0, totalQuestions: 0, attempts: 0 };
+                }
+                subjectPerformance[subjectName].totalScore += record.score || 0;
+                subjectPerformance[subjectName].totalQuestions += record.totalQuestions || 1;
+                subjectPerformance[subjectName].attempts += 1;
+              });
+              
+              const subjectsData = Object.entries(subjectPerformance).map(([name, data]) => ({
+                name,
+                percentage: data.totalQuestions > 0 ? (data.totalScore / data.totalQuestions) * 100 : 0,
+                attempts: data.attempts
+              }));
+              
+              const averageScore = subjectsData.length > 0 
+                ? (subjectsData.reduce((sum, s) => sum + s.percentage, 0) / subjectsData.length).toFixed(1)
+                : 0;
+              
+              const bestSubjects = subjectsData.filter(s => s.percentage >= 70);
+              
+              return (
+                <div className='performance-container' style={{background: '#f7f7f8', padding: '20px', marginBottom: 20, borderRadius: 5, border: '1px solid #e0e0e0'}}>
+                  <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', borderBottom: '1px solid #ddd', paddingBottom: '10px', color: '#333' }}>
+                    📊 Performance
+                  </h3>
+                  
+                  {/* Average Score */}
+                  <div style={{ marginBottom: '15px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '14px', color: '#666', fontWeight: 500 }}>Average Score</span>
+                      <span style={{ 
+                        fontSize: '28px', 
+                        fontWeight: 700, 
+                        color: averageScore >= 70 ? '#4caf50' : averageScore >= 50 ? '#ff9800' : '#f44336'
+                      }}>
+                        {averageScore}%
+                      </span>
+                    </div>
+                    {/* Overall Progress Bar */}
+                    <div style={{ 
+                      width: '100%', 
+                      height: '10px', 
+                      backgroundColor: '#e0e0e0', 
+                      borderRadius: '5px',
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{ 
+                        width: `${averageScore}%`, 
+                        height: '100%', 
+                        backgroundColor: averageScore >= 70 ? '#4caf50' : averageScore >= 50 ? '#ff9800' : '#f44336',
+                        borderRadius: '5px',
+                        transition: 'width 0.3s ease'
+                      }} />
+                    </div>
+                  </div>
+
+                  {/* Subject-wise Percentage Bars */}
+                  <div style={{ marginBottom: '12px' }}>
+                    <span style={{ fontSize: '13px', color: '#666', fontWeight: 500, display: 'block', marginBottom: '10px' }}>
+                      Subject Scores
+                    </span>
+                    {subjectsData.map((subject, index) => (
+                      <div key={index} style={{ marginBottom: '12px' }}>
+                        <div style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center',
+                          marginBottom: '4px'
+                        }}>
+                          <span style={{ 
+                            fontSize: '13px', 
+                            fontWeight: subject.percentage >= 70 ? 600 : 400,
+                            maxWidth: '80px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            color: '#333'
+                          }} title={subject.name}>
+                            {subject.name}
+                          </span>
+                          <span style={{ 
+                            fontSize: '13px', 
+                            fontWeight: 600,
+                            color: subject.percentage >= 70 ? '#4caf50' : subject.percentage >= 50 ? '#ff9800' : '#f44336'
+                          }}>
+                            {subject.percentage.toFixed(1)}%
+                          </span>
+                        </div>
+                        <div style={{ 
+                          width: '100%', 
+                          height: '8px', 
+                          backgroundColor: '#e0e0e0', 
+                          borderRadius: '4px',
+                          overflow: 'hidden'
+                        }}>
+                          <div style={{ 
+                            width: `${subject.percentage}%`, 
+                            height: '100%', 
+                            backgroundColor: subject.percentage >= 70 ? '#4caf50' : subject.percentage >= 50 ? '#ff9800' : '#f44336',
+                            borderRadius: '4px',
+                            transition: 'width 0.3s ease'
+                          }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Best Subjects Badge */}
+                  {bestSubjects.length > 0 && (
+                    <div style={{ 
+                      padding: '12px', 
+                      backgroundColor: '#e8f5e9', 
+                      borderRadius: '8px',
+                      border: '1px solid #4caf50'
+                    }}>
+                      <span style={{ fontSize: '12px', fontWeight: 600, display: 'block', marginBottom: '8px', color: '#2e7d32' }}>
+                        🏆 Best Performers
+                      </span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                        {bestSubjects.map((subject, index) => (
+                          <span key={index} style={{ 
+                            fontSize: '12px', 
+                            backgroundColor: '#4caf50', 
+                            color: '#fff', 
+                            padding: '4px 10px', 
+                            borderRadius: '12px',
+                            fontWeight: 500
+                          }}>
+                            {subject.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+            
             <div className='profile-container' style={{background:'#f7f7f8', padding:'20px', marginBottom: 20, borderRadius: 5}}>
               <h3>Student Profile</h3>
               {studentData && Object.keys(studentData).length > 0 ? (
@@ -763,30 +1177,24 @@ useEffect(() => {
             </div>
             <div className='testcard-container' style={{background: '#f7f7f8', padding: '20px', borderRadius: 5}}>
               <h3>TestCard</h3>
-              {(() => {
-                const availableSubjects = subjects.filter(s => {
-                  const subId = normalizeId(s._id);
-                  return subjectsWithQuestions[subId] && subjectsWithQuestions[subId] > 0;
-                }).length;
-                const completeCount = 0;
-                const incompleteCount = availableSubjects - completeCount;
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 15 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#e3f2fd', borderRadius: 8, borderLeft: '4px solid #2196f3' }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: '#1565c0' }}>Available</span>
-                      <span style={{ fontSize: 20, fontWeight: 700, color: '#1976d2' }}>{availableSubjects}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#e8f5e9', borderRadius: 8, borderLeft: '4px solid #4caf50' }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: '#1b5e20' }}>Complete</span>
-                      <span style={{ fontSize: 20, fontWeight: 700, color: '#2e7d32' }}>{completeCount}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#fff3e0', borderRadius: 8, borderLeft: '4px solid #ff9800' }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: '#bf360c' }}>Incomplete</span>
-                      <span style={{ fontSize: 20, fontWeight: 700, color: '#e65100' }}>{incompleteCount}</span>
-                    </div>
+              {loadingTestCard ? (
+                <p style={{ textAlign: 'center', padding: '10px', color: '#666' }}>Loading...</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 15 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#e3f2fd', borderRadius: 8, borderLeft: '4px solid #2196f3' }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: '#1565c0' }}>Total Tests</span>
+                    <span style={{ fontSize: 20, fontWeight: 700, color: '#1976d2' }}>{testRecords.length}</span>
                   </div>
-                );
-              })()}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#e8f5e9', borderRadius: 8, borderLeft: '4px solid #4caf50' }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: '#1b5e20' }}>Completed</span>
+                    <span style={{ fontSize: 20, fontWeight: 700, color: '#2e7d32' }}>{testRecords.length}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#fff3e0', borderRadius: 8, borderLeft: '4px solid #ff9800' }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: '#bf360c' }}>Pending</span>
+                    <span style={{ fontSize: 20, fontWeight: 700, color: '#e65100' }}>0</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -807,7 +1215,8 @@ useEffect(() => {
           <li className="navbar-menu-item" style={{ cursor: 'pointer', fontWeight: activeTab === 'home' ? 700 : 400 }} onClick={() => handleNavClick('home')}>Home</li>
           <li className="navbar-menu-item" style={{ cursor: 'pointer', fontWeight: activeTab === 'mytest' ? 700 : 400 }} onClick={() => handleNavClick('mytest')}>My Test</li>
           <li className="navbar-menu-item" style={{ cursor: 'pointer', fontWeight: activeTab === 'results' ? 700 : 400 }} onClick={() => handleNavClick('results')}>Results</li>
-          <li className="navbar-menu-item" style={{ cursor: 'pointer', fontWeight: activeTab === 'profile' ? 700 : 400 }} onClick={() => handleNavClick('profile')}>Profile</li>
+<li className="navbar-menu-item" style={{ cursor: 'pointer', fontWeight: activeTab === 'profile' ? 700 : 400 }} onClick={() => handleNavClick('profile')}>Profile</li>
+<li className="navbar-menu-item" style={{ cursor: 'pointer', fontWeight: activeTab === 'queries' ? 700 : 400 }} onClick={() => handleNavClick('queries')}>Queries</li>
           <li className="navbar-menu-item" style={{ cursor: 'pointer', color: '#ffd6d6' }} onClick={onLogout}>Logout</li>
         </ul>
       </nav>
@@ -857,11 +1266,122 @@ useEffect(() => {
           </div>
         </div>
       )}
-      
+
+      {/* Query Submission Modal */}
+      {showQueryModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ backgroundColor: '#fff', borderRadius: 12, padding: 24, width: '90%', maxWidth: 500, boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ margin: 0, color: '#333' }}>Submit a Query</h2>
+              <button onClick={() => { setShowQueryModal(false); setNewQuery({ subject: '', message: '' }); }} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: '#666' }}>×</button>
+            </div>
+            <div style={{ display: 'grid', gap: 16 }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, color: '#444' }}>Subject / Category</label>
+                <select value={newQuery.subject} onChange={(e) => setNewQuery({ ...newQuery, subject: e.target.value })} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #ddd', fontSize: 14 }}>
+                  <option value="">Select a category</option>
+                  <option value="General">General Inquiry</option>
+                  <option value="Test Related">Test Related</option>
+                  <option value="Question Related">Question Related</option>
+                  <option value="Technical Issue">Technical Issue</option>
+                  <option value="Account">Account</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontWeight: 600, color: '#444' }}>Your Message</label>
+                <textarea value={newQuery.message} onChange={(e) => setNewQuery({ ...newQuery, message: e.target.value })} placeholder="Describe your query in detail..." rows={5} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #ddd', fontSize: 14, fontFamily: 'inherit', resize: 'vertical' }} />
+              </div>
+              <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                <button onClick={() => { setShowQueryModal(false); setNewQuery({ subject: '', message: '' }); }} style={{ flex: 1, padding: '12px', borderRadius: 6, border: '1px solid #ddd', backgroundColor: '#fff', color: '#666', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                <button onClick={handleSubmitQuery} disabled={submittingQuery} style={{ flex: 1, padding: '12px', borderRadius: 6, border: 'none', backgroundColor: submittingQuery ? '#9e9e9e' : '#667eea', color: '#fff', fontWeight: 600, cursor: submittingQuery ? 'not-allowed' : 'pointer' }}>{submittingQuery ? 'Submitting...' : 'Submit Query'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Feedback Submission Modal */}
+      {showFeedbackModal && (
+        <div className="enhanced-modal-overlay">
+          <div className="enhanced-modal">
+            <div className="enhanced-modal-header">
+              <h2>Submit Feedback</h2>
+              <button className="enhanced-modal-close" onClick={() => { setShowFeedbackModal(false); setNewFeedback({ category: '', rating: 5, message: '' }); }}>×</button>
+            </div>
+            <div>
+              <div className="enhanced-form-group">
+                <label>Category</label>
+                <select value={newFeedback.category} onChange={(e) => setNewFeedback({ ...newFeedback, category: e.target.value })}>
+                  <option value="">Select a category</option>
+                  <option value="General">General Feedback</option>
+                  <option value="Bug Report">Bug Report</option>
+                  <option value="Suggestion">Suggestion</option>
+                  <option value="Compliment">Compliment</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div className="enhanced-form-group">
+                <label>Rating</label>
+                <div className="star-rating">
+                  {[1, 2, 3, 4, 5].map((rating) => (
+                    <button
+                      key={rating}
+                      className={newFeedback.rating >= rating ? 'active' : ''}
+                      onClick={() => setNewFeedback({ ...newFeedback, rating })}
+                    >
+                      {rating}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="enhanced-form-group">
+                <label>Your Feedback</label>
+                <textarea value={newFeedback.message} onChange={(e) => setNewFeedback({ ...newFeedback, message: e.target.value })} placeholder="Share your thoughts with us..." rows={5} />
+              </div>
+              <div className="enhanced-modal-actions">
+                <button className="enhanced-btn enhanced-btn-secondary" onClick={() => { setShowFeedbackModal(false); setNewFeedback({ category: '', rating: 5, message: '' }); }}>Cancel</button>
+                <button className="enhanced-btn enhanced-btn-primary" onClick={async () => {
+                  if (!newFeedback.message.trim()) {
+                    showToast('Please enter your feedback', 'warning');
+                    return;
+                  }
+                  setSubmittingFeedback(true);
+                  try {
+                    const response = await fetch('/api/feedback', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        studentId,
+                        studentName: name,
+                        category: newFeedback.category || 'General',
+                        rating: newFeedback.rating,
+                        message: newFeedback.message
+                      })
+                    });
+                    if (response.ok) {
+                      showToast('Feedback submitted successfully!', 'success');
+                      setShowFeedbackModal(false);
+                      setNewFeedback({ category: '', rating: 5, message: '' });
+                    } else {
+                      showToast('Failed to submit feedback. Please try again.', 'error');
+                    }
+                  } catch (err) {
+                    console.error('Error submitting feedback:', err);
+                    showToast('Error connecting to server.', 'error');
+                  }
+                  setSubmittingFeedback(false);
+                }} disabled={submittingFeedback}>{submittingFeedback ? 'Submitting...' : 'Submit Feedback'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="dashboard-content">
         {activeTab === 'home' && renderHomeTab()}
         {activeTab === 'mytest' && renderMyTestTab()}
-        {activeTab === 'results' && (
+{activeTab === 'results' && (
           <div style={{ padding: '20px' }}>
             <h2 style={{ marginBottom: 24, color: '#333' }}>My Test Results</h2>
             {testRecords.length > 0 && (
@@ -914,6 +1434,8 @@ useEffect(() => {
             </div>
           </div>
         )}
+
+        {activeTab === 'queries' && renderQueriesTab()}
       </div>
 
       {showPaperPreview && selectedPaper && (
@@ -945,7 +1467,11 @@ useEffect(() => {
             </div>
             <div style={{ marginTop: 20, display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
               <button onClick={() => { setShowPaperPreview(false); setSelectedPaper(null); }} style={{ padding: '12px 24px', borderRadius: 6, border: '1px solid #ddd', backgroundColor: '#fff', color: '#666', fontWeight: 600, cursor: 'pointer' }}>Close</button>
-              <button onClick={() => startTest(selectedPaper)} style={{ padding: '12px 24px', borderRadius: 6, border: 'none', backgroundColor: '#1976d2', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>Start Test</button>
+              {attemptedPapers[normalizeId(selectedPaper._id)] ? (
+                <button disabled style={{ padding: '12px 24px', borderRadius: 6, border: 'none', backgroundColor: '#9e9e9e', color: '#fff', fontWeight: 600, cursor: 'not-allowed' }}>Already Attempted</button>
+              ) : (
+                <button onClick={() => startTest(selectedPaper)} style={{ padding: '12px 24px', borderRadius: 6, border: 'none', backgroundColor: '#1976d2', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>Start Test</button>
+              )}
             </div>
           </div>
         </div>
@@ -1106,7 +1632,12 @@ useEffect(() => {
           <div style={{ maxWidth: 800, margin: '0 auto', padding: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, padding: '12px 16px', backgroundColor: '#fff', borderRadius: 8, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
               <span style={{ fontWeight: 600, color: '#333' }}>Question {currentQuestionIndex + 1} of {activeTest.paper.questions?.length || 0}</span>
-              <span style={{ color: '#666' }}>{Object.keys(selectedAnswers).length} answered</span>
+              <span style={{ color: '#666' }}>{(() => {
+                const answeredCount = Object.keys(selectedAnswers).length + 
+                  Object.keys(textAnswers).filter(k => textAnswers[k] && textAnswers[k] !== '').length +
+                  Object.keys(numericAnswers).filter(k => numericAnswers[k] !== undefined && numericAnswers[k] !== '').length;
+                return answeredCount;
+              })()} answered</span>
             </div>
             {activeTest.paper.questions && activeTest.paper.questions.length > 0 && (() => {
               const currentQuestion = activeTest.paper.questions[currentQuestionIndex];
@@ -1154,9 +1685,15 @@ useEffect(() => {
             <div style={{ marginTop: 24, padding: 16, backgroundColor: '#fff', borderRadius: 8, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
               <p style={{ margin: '0 0 12px 0', fontWeight: 600, color: '#333' }}>Jump to Question:</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {activeTest.paper.questions?.map((_, idx) => (
-                  <button key={idx} onClick={() => setCurrentQuestionIndex(idx)} style={{ width: 40, height: 40, borderRadius: 8, border: `2px solid ${currentQuestionIndex === idx ? '#1976d2' : selectedAnswers[idx] !== undefined ? '#4caf50' : '#e0e0e0'}`, backgroundColor: currentQuestionIndex === idx ? '#1976d2' : selectedAnswers[idx] !== undefined ? '#e8f5e9' : '#fff', color: currentQuestionIndex === idx ? '#fff' : selectedAnswers[idx] !== undefined ? '#2e7d32' : '#666', fontWeight: 600, cursor: 'pointer', fontSize: '0.9em' }}>{idx + 1}</button>
-                ))}
+                {activeTest.paper.questions?.map((_, idx) => {
+                  // Check if any answer type exists for this question
+                  const isAnswered = selectedAnswers[idx] !== undefined || 
+                                    (textAnswers[idx] !== undefined && textAnswers[idx] !== '') ||
+                                    (numericAnswers[idx] !== undefined && numericAnswers[idx] !== '');
+                  return (
+                    <button key={idx} onClick={() => setCurrentQuestionIndex(idx)} style={{ width: 40, height: 40, borderRadius: 8, border: `2px solid ${currentQuestionIndex === idx ? '#1976d2' : isAnswered ? '#4caf50' : '#e0e0e0'}`, backgroundColor: currentQuestionIndex === idx ? '#1976d2' : isAnswered ? '#e8f5e9' : '#fff', color: currentQuestionIndex === idx ? '#fff' : isAnswered ? '#2e7d32' : '#666', fontWeight: 600, cursor: 'pointer', fontSize: '0.9em' }}>{idx + 1}</button>
+                  );
+                })}
               </div>
             </div>
           </div>
