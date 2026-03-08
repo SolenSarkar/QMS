@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
 import { showToast } from "./Toast";
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 // TopicsSection: shows topics for selected subject
 function TopicsSection({ subjectId, topics }) {
   const filteredTopics = topics.filter(t => t.subjectId === subjectId);
