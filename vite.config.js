@@ -5,6 +5,9 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   
   return {
+    // Base path for production deployment
+    base: './',
+    
     // Mode configurations
     mode: mode,
     
@@ -32,17 +35,13 @@ export default defineConfig(({ mode }) => {
       }
     },
     build: {
+      // Build output directory
+      outDir: 'dist',
+      emptyOutDir: true,
+      
       // Build optimizations based on mode
       minify: mode === 'production' ? 'esbuild' : false,
-      sourcemap: mode === 'development',
-      rollupOptions: {
-        output: {
-          manualChunks: mode === 'production' ? {
-            'vendor': ['react', 'react-dom'],
-            'firebase': ['firebase']
-          } : undefined
-        }
-      }
+      sourcemap: mode === 'development'
     }
   };
 });
