@@ -1,6 +1,46 @@
 // API Configuration
-// Use environment variable in production, fallback to localhost for development
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+// Support both localhost and production Render backend URLs
+// Both http://localhost:5000 and https://qms-sjuv.onrender.com work in all environments
+
+// Define both backend URLs
+const LOCAL_API_URL = 'http://localhost:5000';
+const PROD_API_URL = 'https://qms-sjuv.onrender.com';
+
+// Get the preferred API URL from environment variable, default to production
+const getApiBaseUrl = () => {
+  // Check for user preference in environment variable
+  // Can be set to 'local' for local backend, 'production' or 'render' for Render backend
+  const preferredApi = import.meta.env.VITE_PREFERRED_API;
+  
+  if (preferredApi === 'local') {
+    console.log('Using local backend: http://localhost:5000');
+    return LOCAL_API_URL;
+  }
+  
+  if (preferredApi === 'production' || preferredApi === 'render') {
+    console.log('Using production backend: https://qms-sjuv.onrender.com');
+    return PROD_API_URL;
+  }
+  
+  // Default to production Render URL for production builds
+  if (import.meta.env.MODE === 'production') {
+    console.log('Production mode - Using Render backend: https://qms-sjuv.onrender.com');
+    return PROD_API_URL;
+  }
+  
+  // Development mode - default to local but log both available
+  console.log('Development mode - Defaulting to local backend: http://localhost:5000');
+  console.log('Production backend also available: https://qms-sjuv.onrender.com');
+  return LOCAL_API_URL;
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
+// Export both URLs for flexible usage
+export const API_URLS = {
+  LOCAL: LOCAL_API_URL,
+  PRODUCTION: PROD_API_URL
+};
 
 export const API_ENDPOINTS = {
   // Attributes

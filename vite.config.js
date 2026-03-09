@@ -12,10 +12,13 @@ export default defineConfig(({ mode }) => {
     mode: mode,
     
     // Define global environment variables
+    // Supports both localhost:5000 and qms-sjuv.onrender.com backends
     define: {
       'import.meta.env.MODE': JSON.stringify(mode),
       'import.meta.env.PROD': JSON.stringify(mode === 'production'),
       'import.meta.env.DEV': JSON.stringify(mode === 'development'),
+      // VITE_PREFERRED_API: 'local' for localhost, 'production' or 'render' for Render backend
+      'import.meta.env.VITE_PREFERRED_API': JSON.stringify(env.VITE_PREFERRED_API || ''),
       'import.meta.env.VITE_API_URL': JSON.stringify(env.VITE_API_URL || 'http://localhost:5000'),
       'import.meta.env.VITE_DEPLOYMENT_URL': JSON.stringify(env.VITE_DEPLOYMENT_URL || ''),
       'import.meta.env.VITE_APP_MODE': JSON.stringify(env.VITE_APP_MODE || mode),
