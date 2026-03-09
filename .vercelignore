@@ -1,1 +1,42 @@
-node_modules
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Environment files (keep .env.example but not .env with secrets)
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+firebase-debug.log*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backend (Vercel hosts frontend only)
+backend/
+server.js
+
+# Development/test files
+*.test.js
+*.spec.js
+__tests__/
+
+# Misc
+*.md
+!README.md
+

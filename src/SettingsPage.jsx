@@ -22,7 +22,7 @@ export default function SettingsPage({ onHomeClick }) {
 
   // Fetch all data
   const fetchAllData = useCallback(() => {
-    fetch("http://localhost:5000/api/attributes")
+    fetch("https://qms-sjuv.onrender.com/api/attributes")
       .then(res => res.json())
       .then(attrs => {
         // Find class attribute
@@ -34,11 +34,11 @@ export default function SettingsPage({ onHomeClick }) {
         if (!subjectAttr) subjectAttr = attrs.find(a => a.name === "Subject");
         
         const classPromise = classAttr 
-          ? fetch(`http://localhost:5000/api/values/${classAttr._id}`).then(r => r.json())
+          ? fetch(`https://qms-sjuv.onrender.com/api/values/${classAttr._id}`).then(r => r.json())
           : Promise.resolve([]);
           
         const subjectPromise = subjectAttr 
-          ? fetch(`http://localhost:5000/api/values/${subjectAttr._id}`).then(r => r.json())
+          ? fetch(`https://qms-sjuv.onrender.com/api/values/${subjectAttr._id}`).then(r => r.json())
           : Promise.resolve([]);
         
         Promise.all([classPromise, subjectPromise])
@@ -145,7 +145,7 @@ for (const subject of filteredSubjects) {
       const passkey = passkeys[subId] || "";
       
       try {
-        const res = await fetch(`http://localhost:5000/api/values/${subId}`, {
+        const res = await fetch(`https://qms-sjuv.onrender.com/api/values/${subId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ passkey })

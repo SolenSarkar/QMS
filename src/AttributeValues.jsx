@@ -23,7 +23,7 @@ const AttributeValues = ({ onHomeClick }) => {
         const fetchClassList = () => {
           const classAttr = attributes.find(a => a.name && a.name.toLowerCase() === "class");
           if (classAttr) {
-            fetch(`http://localhost:5000/api/values/${classAttr._id}`)
+            fetch(`https://qms-sjuv.onrender.com/api/values/${classAttr._id}`)
               .then(res => res.json())
               .then(setClassList);
           } else {
@@ -32,7 +32,7 @@ const AttributeValues = ({ onHomeClick }) => {
         };
       // Fetch attributes from backend on mount
       useEffect(() => {
-        fetch("http://localhost:5000/api/attributes")
+        fetch("https://qms-sjuv.onrender.com/api/attributes")
           .then((res) => res.json())
           .then((data) => {
             setAttributes(data);
@@ -65,7 +65,7 @@ const AttributeValues = ({ onHomeClick }) => {
     if (attr && attr.name && attr.name.toLowerCase() === 'topic') {
       const subjectAttr = attributes.find(a => a.name.toLowerCase() === 'subject');
       if (subjectAttr) {
-        fetch(`http://localhost:5000/api/values/${subjectAttr._id}`)
+        fetch(`https://qms-sjuv.onrender.com/api/values/${subjectAttr._id}`)
           .then(res => res.json())
           .then(setSubjectList);
       }
@@ -82,14 +82,14 @@ const AttributeValues = ({ onHomeClick }) => {
       // If Subject, filter by class
       const attr = attributes.find(a => a._id === selectedAttribute);
       if (attr && attr.name.toLowerCase() === "subject" && selectedClass) {
-        fetch(`http://localhost:5000/api/values/${selectedAttribute}`)
+        fetch(`https://qms-sjuv.onrender.com/api/values/${selectedAttribute}`)
           .then(res => res.json())
           .then(data => {
             console.log('DEBUG: values received:', data);
             setValues(data.filter(v => v.classId === selectedClass));
           });
       } else {
-        fetch(`http://localhost:5000/api/values/${selectedAttribute}`)
+        fetch(`https://qms-sjuv.onrender.com/api/values/${selectedAttribute}`)
           .then(res => res.json())
           .then(data => {
             console.log('DEBUG: values received:', data);
@@ -132,7 +132,7 @@ const payload = {
     if (attr && attr.name.toLowerCase() === "topic" && selectedClass) {
       payload.subjectId = selectedClass;
     }
-    fetch("http://localhost:5000/api/values", {
+    fetch("https://qms-sjuv.onrender.com/api/values", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -176,7 +176,7 @@ const payload = {
     const val = values.find(v => v._id === id);
     if (!val) return;
     const updatedStatus = val.status === "Active" ? "Inactive" : "Active";
-    fetch(`http://localhost:5000/api/values/${id}`, {
+    fetch(`https://qms-sjuv.onrender.com/api/values/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...val, status: updatedStatus })
@@ -188,7 +188,7 @@ const payload = {
   };
 
   const handleDelete = (id) => {
-    fetch(`http://localhost:5000/api/values/${id}`, {
+    fetch(`https://qms-sjuv.onrender.com/api/values/${id}`, {
       method: "DELETE"
     })
       .then(res => res.json())

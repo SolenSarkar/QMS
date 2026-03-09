@@ -6,7 +6,7 @@ export default function AttributeMaster({ onHomeClick }) {
 	const [attributes, setAttributes] = useState([]);
 		// Fetch attributes from backend
 		useEffect(() => {
-			fetch("http://localhost:5000/api/attributes")
+			fetch("https://qms-sjuv.onrender.com/api/attributes")
 				.then((res) => res.json())
 				.then((data) => setAttributes(data));
 		}, []);
@@ -20,7 +20,7 @@ export default function AttributeMaster({ onHomeClick }) {
 			newAttr.trim() &&
 			!attributes.some(a => a.name.toLowerCase() === newAttr.trim().toLowerCase())
 		) {
-			fetch("http://localhost:5000/api/attributes", {
+			fetch("https://qms-sjuv.onrender.com/api/attributes", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ name: newAttr.trim(), status: newStatus })
@@ -39,7 +39,7 @@ export default function AttributeMaster({ onHomeClick }) {
 		const attr = attributes.find(a => (a._id || a.id) === id);
 		if (!attr) return;
 		const updatedStatus = attr.status === "Active" ? "Inactive" : "Active";
-		fetch(`http://localhost:5000/api/attributes/${id}`, {
+		fetch(`https://qms-sjuv.onrender.com/api/attributes/${id}`, {
 			method: "PUT",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ ...attr, status: updatedStatus })
@@ -51,7 +51,7 @@ export default function AttributeMaster({ onHomeClick }) {
 	};
 
 	const handleDelete = (id) => {
-		fetch(`http://localhost:5000/api/attributes/${id}`, {
+		fetch(`https://qms-sjuv.onrender.com/api/attributes/${id}`, {
 			method: "DELETE"
 		})
 			.then(res => res.json())

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
 import { showToast } from "./Toast";
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL || 'https://qms-sjuv.onrender.com';
 
 // TopicsSection: shows topics for selected subject
 function TopicsSection({ subjectId, topics }) {
@@ -136,24 +136,24 @@ const [unlockedSubjects, setUnlockedSubjects] = useState([]);
 
   // Fetch boards, classes, subjects, topics from backend (assuming attribute values)
   useEffect(() => {
-    fetch("http://localhost:5000/api/attributes")
+    fetch("https://qms-sjuv.onrender.com/api/attributes")
       .then(res => res.json())
       .then(attrs => {
         const boardAttr = attrs.find(a => a.name.toLowerCase() === "board");
         if (boardAttr) {
-          fetch(`http://localhost:5000/api/values/${boardAttr._id}`)
+          fetch(`https://qms-sjuv.onrender.com/api/values/${boardAttr._id}`)
             .then(res => res.json())
             .then(setBoards);
         }
         const classAttr = attrs.find(a => a.name.toLowerCase() === "class");
         if (classAttr) {
-          fetch(`http://localhost:5000/api/values/${classAttr._id}`)
+          fetch(`https://qms-sjuv.onrender.com/api/values/${classAttr._id}`)
             .then(res => res.json())
             .then(data => setClasses(data.filter(v => v.status === 'Active')));
         }
         const subjectAttr = attrs.find(a => a.name.toLowerCase() === "subject");
         if (subjectAttr) {
-          fetch(`http://localhost:5000/api/values/${subjectAttr._id}`)
+          fetch(`https://qms-sjuv.onrender.com/api/values/${subjectAttr._id}`)
             .then(res => res.json())
             .then(data => {
               setAllSubjects(data);
@@ -161,7 +161,7 @@ const [unlockedSubjects, setUnlockedSubjects] = useState([]);
         }
         const topicAttr = attrs.find(a => a.name.toLowerCase() === "topic");
         if (topicAttr) {
-          fetch(`http://localhost:5000/api/values/${topicAttr._id}`)
+          fetch(`https://qms-sjuv.onrender.com/api/values/${topicAttr._id}`)
             .then(res => res.json())
             .then(setTopics);
         }
@@ -177,12 +177,12 @@ const [unlockedSubjects, setUnlockedSubjects] = useState([]);
       if (activeTab !== "") setActiveTab("");
       return;
     }
-    fetch("http://localhost:5000/api/attributes")
+    fetch("https://qms-sjuv.onrender.com/api/attributes")
       .then(res => res.json())
       .then(attrs => {
         const subjectAttr = attrs.find(a => a.name.toLowerCase() === "subject");
         if (subjectAttr) {
-          fetch(`http://localhost:5000/api/values/${subjectAttr._id}`)
+          fetch(`https://qms-sjuv.onrender.com/api/values/${subjectAttr._id}`)
             .then(res => res.json())
             .then(subjectsList => {
               // Filter subjects that match the selected class OR have no classId (universal subjects)
@@ -210,7 +210,7 @@ const [unlockedSubjects, setUnlockedSubjects] = useState([]);
       setQuestions([]);
       return;
     }
-    fetch(`http://localhost:5000/api/questions?classId=${selectedClass}&subjectId=${activeTab}`)
+    fetch(`https://qms-sjuv.onrender.com/api/questions?classId=${selectedClass}&subjectId=${activeTab}`)
       .then(res => res.json())
       .then(setQuestions);
   }, [selectedClass, activeTab]);
@@ -259,7 +259,7 @@ const [unlockedSubjects, setUnlockedSubjects] = useState([]);
       text: questionText,
       answer: answerText
     };
-    fetch("http://localhost:5000/api/questions", {
+    fetch("https://qms-sjuv.onrender.com/api/questions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -330,7 +330,7 @@ const handleDelete = (id) => {
     return;
   }
   console.log('Deleting question with ID:', id);
-  fetch(`http://localhost:5000/api/questions/${id}`, {
+  fetch(`https://qms-sjuv.onrender.com/api/questions/${id}`, {
     method: 'DELETE'
   })
   .then(res => {
@@ -407,12 +407,12 @@ const questionsByTopic = getQuestionsByTopic();
         setLocalSubject("");
         return;
       }
-      fetch("http://localhost:5000/api/attributes")
+      fetch("https://qms-sjuv.onrender.com/api/attributes")
         .then(res => res.json())
         .then(attrs => {
           const subjectAttr = attrs.find(a => a.name.toLowerCase() === "subject");
           if (subjectAttr) {
-            fetch(`http://localhost:5000/api/values/${subjectAttr._id}`)
+            fetch(`https://qms-sjuv.onrender.com/api/values/${subjectAttr._id}`)
               .then(res => res.json())
               .then(subjectsList => {
                 const filtered = subjectsList.filter(s => {
@@ -468,7 +468,7 @@ const questionsByTopic = getQuestionsByTopic();
         text: localQuestion,
         answer: localAnswer
       };
-      fetch("http://localhost:5000/api/questions", {
+      fetch("https://qms-sjuv.onrender.com/api/questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)

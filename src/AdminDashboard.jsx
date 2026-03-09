@@ -35,7 +35,7 @@ export default function AdminDashboard({ onLogout }) {
     const fetchQueries = async () => {
       setLoadingQueries(true);
       try {
-        const response = await fetch('http://localhost:5000/api/queries');
+const response = await fetch('https://qms-sjuv.onrender.com/api/queries');
         if (response.ok) {
           const data = await response.json();
           setQueries(data);
@@ -58,7 +58,7 @@ export default function AdminDashboard({ onLogout }) {
     
     setSubmittingResponse(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/queries/${queryId}/respond`, {
+const response = await fetch(`https://qms-sjuv.onrender.com/api/queries/${queryId}/respond`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ adminResponse: responseText })
@@ -66,7 +66,7 @@ export default function AdminDashboard({ onLogout }) {
       
       if (response.ok) {
         // Refresh queries
-        const queriesResponse = await fetch('http://localhost:5000/api/queries');
+        const queriesResponse = await fetch('https://qms-sjuv.onrender.com/api/queries');
         if (queriesResponse.ok) {
           const data = await queriesResponse.json();
           setQueries(data);
@@ -90,13 +90,13 @@ export default function AdminDashboard({ onLogout }) {
     if (!confirm('Are you sure you want to delete this query?')) return;
     
     try {
-      const response = await fetch(`http://localhost:5000/api/queries/${queryId}`, {
+      const response = await fetch(`https://qms-sjuv.onrender.com/api/queries/${queryId}`, {
         method: 'DELETE'
       });
       
       if (response.ok) {
         // Refresh queries
-        const queriesResponse = await fetch('http://localhost:5000/api/queries');
+        const queriesResponse = await fetch('https://qms-sjuv.onrender.com/api/queries');
         if (queriesResponse.ok) {
           const data = await queriesResponse.json();
           setQueries(data);
