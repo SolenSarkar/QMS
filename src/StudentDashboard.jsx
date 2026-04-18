@@ -36,6 +36,7 @@ function StudentDashboard({ name, studentData, onProjectTitleClick, onLogout }) 
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [textAnswers, setTextAnswers] = useState({});
   const [numericAnswers, setNumericAnswers] = useState({});
+  const [imageFiles, setImageFiles] = useState({});
   const [testTimeLeft, setTestTimeLeft] = useState(0);
   const [testSubmitted, setTestSubmitted] = useState(false);
   const [testSubmitting, setTestSubmitting] = useState(false);
@@ -277,6 +278,28 @@ useEffect(() => {
     }));
   };
 
+  const handleImageChange = (questionIndex, file) => {
+    if (file && file.size > 4 * 1024 * 1024) {
+      showToast('Image must be less than 4MB', 'error');
+      return;
+    }
+    if (file && !file.type.startsWith('image/')) {
+      showToast('Please select an image file only', 'error');
+      return;
+    }
+    setImageFiles(prev => ({
+      ...prev,
+      [questionIndex]: file
+    }));
+  };
+
+  const removeImage = (questionIndex) => {
+    setImageFiles(prev => ({
+      ...prev,
+      [questionIndex]: null
+    }));
+  };
+
   const handleSubmitTest = async () => {
     if (!activeTest) return;
     setTestSubmitting(true);
@@ -392,19 +415,45 @@ useEffect(() => {
         submittedAt: new Date()
       };
 
-      const response = await fetch('https://qms-sjuv.onrender.com/api/test-records', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          studentId: studentId,
-          questionPaperId: activeTest.paper._id,
-          score: score,
-          totalQuestions: questions.length,
-          correctAnswers: correctAnswers,
-          subjectName: activeTest.paper.subject,
-          answers: answers
-        })
-      });
+      const hasImages = Object.values(imageFiles).some(file => file !== null && file !== undefined);
+      if (hasImages) {
+        // FormData for image submission
+        const formData = new FormData();
+        formData.append('studentId', studentId);
+        formData.append('questionPaperId', activeTest.paper._id);
+        formData.append('score', score);
+        formData.append('totalQuestions', questions.length);
+        formData.append('correctAnswers', correctAnswers);
+        formData.append('subjectName', activeTest.paper.subject);
+        formData.append('answersData', JSON.stringify(answers));
+        
+        // Append image files
+        Object.entries(imageFiles).forEach(([qIndex, file]) => {
+          if (file) {
+            formData.append(`answerImage_${qIndex}`, file);
+          }
+        });
+        
+        const response = await fetch('https://qms-sjuv.onrender.com/api/test-records', {
+          method: 'POST',
+          body: formData
+        });
+      } else {
+        // JSON for regular submission
+        const response = await fetch('https://qms-sjuv.onrender.com/api/test-records', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            studentId: studentId,
+            questionPaperId: activeTest.paper._id,
+            score: score,
+            totalQuestions: questions.length,
+            correctAnswers: correctAnswers,
+            subjectName: activeTest.paper.subject,
+            answers: answers
+          })
+        });
+      }
 
       if (response.ok) {
         setTestResult(result);
@@ -1653,10 +1702,57 @@ useEffect(() => {
                       <textarea value={textAnswers[currentQuestionIndex] || ''} onChange={(e) => handleTextAnswerChange(currentQuestionIndex, e.target.value)} placeholder="Type your answer here..." rows={4} style={{ width: '100%', padding: '14px 16px', borderRadius: 8, border: '2px solid #e0e0e0', fontSize: '1em', fontFamily: 'inherit', resize: 'vertical', backgroundColor: '#fafafa', color: '#333' }} />
                       <p style={{ marginTop: 8, fontSize: '0.85em', color: '#666' }}>{textAnswers[currentQuestionIndex]?.length > 0 ? '✓ Answer entered' : 'Please enter your answer above'}</p>
                     </div>
-                  ) : questionType === 'numeric' ? (
+                  ) : questionType === 'numeric' || questionType === 'text' ? (
                     <div style={{ marginTop: 16 }}>
-                      <input type="number" value={numericAnswers[currentQuestionIndex] || ''} onChange={(e) => handleNumericAnswerChange(currentQuestionIndex, e.target.value)} placeholder="Enter numeric answer" style={{ width: '100%', padding: '14px 16px', borderRadius: 8, border: '2px solid #e0e0e0', fontSize: '1em', backgroundColor: '#fafafa', color: '#333' }} />
-                      <p style={{ marginTop: 8, fontSize: '0.85em', color: '#666' }}>{numericAnswers[currentQuestionIndex] !== undefined && numericAnswers[currentQuestionIndex] !== '' ? '✓ Answer entered' : 'Please enter a number'}</p>
+                      <input 
+                        type={questionType === 'numeric' ? 'number' : 'text'} 
+                        value={questionType === 'numeric' ? (numericAnswers[currentQuestionIndex] || '') : (textAnswers[currentQuestionIndex] || '')} 
+                        onChange={(e) => questionType === 'numeric' ? 
+                          handleNumericAnswerChange(currentQuestionIndex, e.target.value) : 
+                          handleTextAnswerChange(currentQuestionIndex, e.target.value)
+                        } 
+                        placeholder={questionType === 'numeric' ? "Enter numeric answer" : "Type your answer here..."} 
+                        style={{ width: '100%', padding: '14px 16px', borderRadius: 8, border: '2px solid #e0e0e0', fontSize: '1em', backgroundColor: '#fafafa', color: '#333' }} 
+                      />
+                      <p style={{ marginTop: 8, fontSize: '0.85em', color: '#666' }}>
+                        {(questionType === 'numeric' ? (numericAnswers[currentQuestionIndex] !== undefined && numericAnswers[currentQuestionIndex] !== '') : 
+                          (textAnswers[currentQuestionIndex] && textAnswers[currentQuestionIndex] !== '')) ? '✓ Answer entered' : 
+                          `Please enter your ${questionType === 'numeric' ? 'number' : 'text'} answer`}
+                      </p>
+
+                      {/* Image Upload for text/numeric questions */}
+                      <div style={{ marginTop: 16, padding: '16px', backgroundColor: '#f8f9fa', borderRadius: 8, border: '2px dashed #dee2e6' }}>
+                        <label style={{ display: 'block', marginBottom: 12, fontWeight: 600, color: '#495057', fontSize: '0.95em' }}>
+                          📷 Upload Supporting Image (<strong>4MB max</strong>)
+                        </label>
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          onChange={(e) => handleImageChange(currentQuestionIndex, e.target.files[0])}
+                          style={{ width: '100%', padding: '12px', borderRadius: 6, border: '1px solid #ddd', backgroundColor: '#fff' }} 
+                        />
+                        {imageFiles[currentQuestionIndex] && (
+                          <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <img 
+                              src={URL.createObjectURL(imageFiles[currentQuestionIndex])} 
+                              alt="Preview" 
+                              style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '2px solid #4caf50' }} 
+                            />
+                            <div>
+                              <p style={{ margin: '0 0 4px 0', fontWeight: 600, color: '#28a745' }}>✅ Image selected ({(imageFiles[currentQuestionIndex].size / 1024 / 1024).toFixed(1)} MB)</p>
+                              <button 
+                                onClick={() => removeImage(currentQuestionIndex)}
+                                style={{ padding: '6px 12px', borderRadius: 4, border: 'none', backgroundColor: '#dc3545', color: '#fff', fontSize: '0.85em', cursor: 'pointer' }}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                        {!imageFiles[currentQuestionIndex] && (
+                          <p style={{ marginTop: 8, fontSize: '0.85em', color: '#6c757d', fontStyle: 'italic' }}>Optional: Upload image/diagram to support your answer</p>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <div style={{ display: 'grid', gap: 12 }}>

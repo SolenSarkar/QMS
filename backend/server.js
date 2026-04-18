@@ -2,16 +2,84 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cors({
   origin: "*"
 }));
 
+// Serve uploaded images
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Connect to MongoDB Atlas (with database name)
 const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://solensarkar3938_db_user:lwPIoY6wx6dSuNkl@cluster0.exnkgdp.mongodb.net/qms';
 mongoose.connect(mongoUri);
+
+// Multer setup for image uploads
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// NEW: Student answer uploads directory
+const studentAnswersDir = path.join(__dirname, 'uploads/student-answers');
+if (!fs.existsSync(studentAnswersDir)) {
+  fs.mkdirSync(studentAnswersDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'question-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB for question images
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files allowed'), false);
+    }
+  }
+});
+
+// NEW: Multer for student answer images (4MB limit)
+const studentAnswerStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const studentId = req.body.studentId || req.params.studentId || 'unknown';
+    const studentDir = path.join(studentAnswersDir, studentId);
+    fs.mkdirSync(studentDir, { recursive: true });
+    cb(null, studentDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, `answer-${uniqueSuffix}${path.extname(file.originalname)}`);
+  }
+});
+
+const studentAnswerUpload = multer({
+  storage: studentAnswerStorage,
+  limits: { fileSize: 4 * 1024 * 1024 }, // 4MB limit
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files allowed for answers'), false);
+    }
+  }
+});
 
 // Attribute schema
 const attributeSchema = new mongoose.Schema({
@@ -45,6 +113,46 @@ const valueSchema = new mongoose.Schema({
 });
 const AttributeValue = mongoose.model('AttributeValue', valueSchema);
 
+// Question schema
+const questionSchema = new mongoose.Schema({
+  boardId: { type: mongoose.Schema.Types.ObjectId, required: false },
+  classId: { type: mongoose.Schema.Types.ObjectId, required: false },
+  subjectId: { type: mongoose.Schema.Types.ObjectId, required: false },
+  topicId: { type: mongoose.Schema.Types.ObjectId, required: false },
+  marks: { type: Number, required: false },
+  type: { type: String, required: false },
+  options: { type: [String], required: false },
+  text: { type: String, required: false },
+  answer: { type: String, required: false },
+  imageUrl: { type: String, required: false }
+});
+const Question = mongoose.model('Question', questionSchema);
+
+// Question Paper schema
+const questionPaperSchema = new mongoose.Schema({
+  board: { type: String, required: false },
+  boardId: { type: mongoose.Schema.Types.ObjectId, required: false },
+  class: { type: String, required: false },
+  classId: { type: mongoose.Schema.Types.ObjectId, required: false },
+  subject: { type: String, required: false },
+  subjectId: { type: mongoose.Schema.Types.ObjectId, required: false },
+  difficulty: { type: String, required: false },
+  totalMarks: { type: Number, required: false },
+  totalQuestions: { type: Number, required: false },
+  questions: { type: Array, required: false },
+  createdAt: { type: Date, default: Date.now }
+});
+const QuestionPaper = mongoose.model('QuestionPaper', questionPaperSchema);
+
+// Question Paper Permit schema
+const questionPaperPermitSchema = new mongoose.Schema({
+  questionPaperId: { type: mongoose.Schema.Types.ObjectId, ref: 'QuestionPaper', required: true },
+  startDate: { type: Date, required: true },
+  endDate: { type: Date, required: true },
+  timeLimit: { type: Number, required: true },
+  createdAt: { type: Date, default: Date.now }
+});
+const QuestionPaperPermit = mongoose.model('QuestionPaperPermit', questionPaperPermitSchema);
 
 // Attribute APIs
 app.get('/api/attributes', async (req, res) => {
@@ -101,47 +209,6 @@ app.delete('/api/values/:id', async (req, res) => {
   res.json({ success: true });
 });
 
-
-// Question schema
-const questionSchema = new mongoose.Schema({
-  boardId: { type: mongoose.Schema.Types.ObjectId, required: false },
-  classId: { type: mongoose.Schema.Types.ObjectId, required: false },
-  subjectId: { type: mongoose.Schema.Types.ObjectId, required: false },
-  topicId: { type: mongoose.Schema.Types.ObjectId, required: false },
-  marks: { type: Number, required: false },
-  type: { type: String, required: false },
-  options: { type: [String], required: false },
-  text: { type: String, required: false },
-  answer: { type: String, required: false }
-});
-const Question = mongoose.model('Question', questionSchema);
-
-// Question Paper schema
-const questionPaperSchema = new mongoose.Schema({
-  board: { type: String, required: false },
-  boardId: { type: mongoose.Schema.Types.ObjectId, required: false },
-  class: { type: String, required: false },
-  classId: { type: mongoose.Schema.Types.ObjectId, required: false },
-  subject: { type: String, required: false },
-  subjectId: { type: mongoose.Schema.Types.ObjectId, required: false },
-  difficulty: { type: String, required: false },
-  totalMarks: { type: Number, required: false },
-  totalQuestions: { type: Number, required: false },
-  questions: { type: Array, required: false },
-  createdAt: { type: Date, default: Date.now }
-});
-const QuestionPaper = mongoose.model('QuestionPaper', questionPaperSchema);
-
-// Question Paper Permit schema
-const questionPaperPermitSchema = new mongoose.Schema({
-  questionPaperId: { type: mongoose.Schema.Types.ObjectId, ref: 'QuestionPaper', required: true },
-  startDate: { type: Date, required: true },
-  endDate: { type: Date, required: true },
-  timeLimit: { type: Number, required: true },
-  createdAt: { type: Date, default: Date.now }
-});
-const QuestionPaperPermit = mongoose.model('QuestionPaperPermit', questionPaperPermitSchema);
-
 // Question Paper Permit APIs
 app.post('/api/question-paper-permits', async (req, res) => {
   try {
@@ -184,15 +251,27 @@ app.get('/api/question-paper-permits/:questionPaperId', async (req, res) => {
   }
 });
 
-// Add a question
-app.post('/api/questions', async (req, res) => {
+// Add a question (JSON or FormData with image)
+app.post('/api/questions', upload.single('image'), async (req, res) => {
   try {
-    const q = new Question(req.body);
+    const questionData = {
+      boardId: req.body.boardId,
+      classId: req.body.classId,
+      subjectId: req.body.subjectId,
+      topicId: req.body.topicId,
+      marks: parseInt(req.body.marks),
+      type: req.body.type,
+      options: req.body.options ? JSON.parse(req.body.options) : [],
+      text: req.body.text,
+      answer: req.body.answer,
+      imageUrl: req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl || null
+    };
+    const q = new Question(questionData);
     await q.save();
     res.json(q);
   } catch (err) {
-    console.error('Error saving question:', err, '\nRequest body:', req.body);
-    res.status(400).json({ error: err.message, details: err, body: req.body });
+    console.error('Error saving question:', err);
+    res.status(400).json({ error: err.message });
   }
 });
 
@@ -247,7 +326,8 @@ app.post('/api/question-papers', async (req, res) => {
           topicId: q.topicId,
           subjectId: q.subjectId,
           classId: q.classId,
-          boardId: q.boardId
+          boardId: q.boardId,
+          imageUrl: q.imageUrl
         };
       });
     }
@@ -333,8 +413,18 @@ const testRecordSchema = new mongoose.Schema({
   correctAnswers: { type: Number, required: true },
   subjectName: { type: String },
   testDate: { type: Date, default: Date.now },
-// Store detailed question results for review
-  answers: { type: Array, default: [] }
+  answers: { 
+    type: [{
+      questionText: String,
+      options: [String],
+      selectedAnswer: mongoose.Schema.Types.Mixed,
+      correctAnswer: mongoose.Schema.Types.Mixed,
+      isCorrect: Boolean,
+      marks: Number,
+      imageUrl: { type: String, default: null }  // NEW: Student answer image
+    }], 
+    default: [] 
+  }
 });
 const TestRecord = mongoose.model('TestRecord', testRecordSchema);
 
@@ -345,7 +435,7 @@ const querySchema = new mongoose.Schema({
   rollNumber: { type: String, required: true },
   subject: { type: String },
   message: { type: String, required: true },
-  status: { type: String, default: 'Pending' }, // Pending, Responded
+  status: { type: String, default: 'Pending' },
   adminResponse: { type: String },
   createdAt: { type: Date, default: Date.now }
 });
@@ -355,10 +445,10 @@ const Query = mongoose.model('Query', querySchema);
 const feedbackSchema = new mongoose.Schema({
   studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
   studentName: { type: String, required: true },
-  category: { type: String, default: 'General' }, // General, Website, Tests, Questions, Suggestions, Other
+  category: { type: String, default: 'General' },
   rating: { type: Number, required: true, min: 1, max: 5 },
   message: { type: String, required: true },
-  status: { type: String, default: 'New' }, // New, Reviewed, Addressed
+  status: { type: String, default: 'New' },
   adminResponse: { type: String },
   createdAt: { type: Date, default: Date.now }
 });
@@ -484,27 +574,32 @@ app.get('/api/students/:id', async (req, res) => {
 
 function parseDate(dateStr) {
   if (!dateStr) return null;
+
+  dateStr = dateStr.trim();
   
-  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'];
+  const monthMap = {
+    'january': '01', 'february': '02', 'march': '03', 'april': '04', 'may': '05', 'june': '06',
+    'july': '07', 'august': '08', 'september': '09', 'october': '10', 'november': '11', 'december': '12'
+  };
   
-  const monthNameMatch = dateStr.match(/^(\d{1,2})-([A-Za-z]+)-(\d{4})$/);
-  if (monthNameMatch) {
-    const day = monthNameMatch[1];
-    const monthName = monthNameMatch[2];
-    const year = monthNameMatch[3];
-    const monthIndex = monthNames.findIndex(m => m.toLowerCase() === monthName.toLowerCase());
-    if (monthIndex !== -1) {
-      const month = String(monthIndex + 1).padStart(2, '0');
-      return { day, month, year, formatted: `${day}-${month}-${year}` };
+  // Month name with optional spaces around dashes
+  let match = dateStr.match(/^(\\d{1,2})\\s*-\\s*([a-zA-Z]+)\\s*-\\s*(\\d{4})$/i);
+  if (match) {
+    const day = match[1].padStart(2, '0');
+    const monthName = match[2].toLowerCase().trim();
+    const year = match[3];
+    const month = monthMap[monthName];
+    if (month) {
+      return {day, month, year, formatted: `${day}-${month}-${year}` };
     }
   }
   
-  const dashMatch = dateStr.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
-  if (dashMatch) {
-    const day = dashMatch[1].padStart(2, '0');
-    const month = dashMatch[2].padStart(2, '0');
-    const year = dashMatch[3];
+  // Numeric with optional spaces
+  match = dateStr.match(/^(\\d{1,2})\\s*-\\s*(\\d{1,2})\\s*-\\s*(\\d{4})$/);
+  if (match) {
+    const day = match[1].padStart(2, '0');
+    const month = match[2].padStart(2, '0');
+    const year = match[3];
     return { day, month, year, formatted: `${day}-${month}-${year}` };
   }
   
@@ -524,9 +619,13 @@ function normalizeDateForComparison(dateStr1, dateStr2) {
 
 app.post('/api/students/login', async (req, res) => {
   try {
-    const { name, rollNumber, dateOfBirth } = req.body;
+    const { name: rawName, rollNumber: rawRoll, dateOfBirth: rawDob } = req.body;
     
-    console.log('Student login attempt:', { name, rollNumber, dateOfBirth });
+    const name = rawName ? rawName.toString().trim() : '';
+    const rollNumber = rawRoll ? rawRoll.toString().trim() : '';
+    const dateOfBirth = rawDob ? rawDob.toString().trim() : '';
+    
+    console.log('Student login attempt (trimmed):', { name, rollNumber, dateOfBirth });
     
     const student = await Student.findOne({
       rollNumber: rollNumber,
@@ -540,13 +639,16 @@ app.post('/api/students/login', async (req, res) => {
     }
     
     if (name && student.name) {
-      if (student.name.toLowerCase() !== name.toLowerCase()) {
+      if (student.name.toLowerCase().trim() !== name.toLowerCase()) {
         return res.status(401).json({ error: 'Invalid credentials or student not found' });
       }
     }
     
     if (dateOfBirth && student.dateOfBirth) {
-      if (!normalizeDateForComparison(dateOfBirth, student.dateOfBirth)) {
+      const parsedInput = parseDate(dateOfBirth);
+      const parsedDb = parseDate(student.dateOfBirth);
+      console.log('DOB parse - input:', parsedInput?.formatted, 'DB:', parsedDb?.formatted);
+      if (!parsedInput || !parsedDb || parsedInput.formatted !== parsedDb.formatted) {
         return res.status(401).json({ error: 'Invalid credentials or student not found' });
       }
     }
@@ -610,7 +712,7 @@ app.put('/api/students/:id', async (req, res) => {
     if (data.classId === "" || data.classId === null || data.classId === undefined) {
       delete data.classId;
     }
-    if (data.boardId === "" || data.boardId === null || data.boardId === undefined) {
+    if (data.boardId === "" || data.boardId === null || data.bodyId === undefined) {
       delete data.boardId;
     }
     
@@ -706,36 +808,54 @@ app.get('/api/test-records/:studentId', async (req, res) => {
   }
 });
 
-app.post('/api/test-records', async (req, res) => {
+app.post('/api/test-records', studentAnswerUpload.array('answerImages'), async (req, res) => {
   try {
-    const { studentId, questionPaperId, score, totalQuestions, correctAnswers, subjectName, answers } = req.body;
+    let testData = {};
+    let hasImages = req.files && req.files.length > 0;
+    
+    if (hasImages) {
+      // FormData submission with images
+      testData.studentId = req.body.studentId;
+      testData.questionPaperId = req.body.questionPaperId;
+      testData.score = parseInt(req.body.score);
+      testData.totalQuestions = parseInt(req.body.totalQuestions);
+      testData.correctAnswers = parseInt(req.body.correctAnswers);
+      testData.subjectName = req.body.subjectName;
+      
+      // Parse answers JSON and match images
+      const answersJson = JSON.parse(req.body.answersData);
+      testData.answers = answersJson.map((answer, index) => {
+        const imageFile = req.files.find(f => f.fieldname === `answerImage_${index}`);
+        if (imageFile) {
+          answer.imageUrl = `/uploads/student-answers/${testData.studentId}/${imageFile.filename}`;
+        }
+        return answer;
+      });
+    } else {
+      // Regular JSON submission (backward compatibility)
+      testData = req.body;
+    }
     
     const testRecord = new TestRecord({
-      studentId,
-      questionPaperId,
-      score,
-      totalQuestions,
-      correctAnswers: correctAnswers,
-      subjectName,
-      testDate: new Date(),
-      answers: answers || []
+      ...testData,
+      testDate: new Date()
     });
     await testRecord.save();
     
-    const student = await Student.findById(studentId);
+    const student = await Student.findById(testData.studentId);
     if (student) {
-      student.totalScore += score;
+      student.totalScore += testData.score;
       student.testsTaken += 1;
       await student.save();
     }
     
     res.status(201).json(testRecord);
   } catch (err) {
+    console.error('Test record save error:', err);
     res.status(400).json({ error: err.message });
   }
 });
 
-// Get detailed test record with question results
 app.get('/api/test-records/detail/:recordId', async (req, res) => {
   try {
     const record = await TestRecord.findById(req.params.recordId)
@@ -752,7 +872,6 @@ app.get('/api/test-records/detail/:recordId', async (req, res) => {
   }
 });
 
-// DELETE test record - allows admin to delete a student's attempt so they can retake
 app.delete('/api/test-records/:id', async (req, res) => {
   try {
     const testRecord = await TestRecord.findById(req.params.id);
@@ -760,7 +879,6 @@ app.delete('/api/test-records/:id', async (req, res) => {
       return res.status(404).json({ error: 'Test record not found' });
     }
     
-    // Optionally: revert student's score
     const student = await Student.findById(testRecord.studentId);
     if (student) {
       student.totalScore = Math.max(0, student.totalScore - testRecord.score);
@@ -775,7 +893,6 @@ app.delete('/api/test-records/:id', async (req, res) => {
   }
 });
 
-// Check if student has already attempted a specific question paper
 app.get('/api/test-records/check/:studentId/:questionPaperId', async (req, res) => {
   try {
     const { studentId, questionPaperId } = req.params;
@@ -811,7 +928,6 @@ app.get('/api/seed-admin', async (req, res) => {
 
 // ==================== QUERY APIs ====================
 
-// Student submits a query
 app.post('/api/queries', async (req, res) => {
   try {
     const { studentId, studentName, rollNumber, subject, message } = req.body;
@@ -831,7 +947,6 @@ app.post('/api/queries', async (req, res) => {
   }
 });
 
-// Get queries for a specific student
 app.get('/api/queries/student/:studentId', async (req, res) => {
   try {
     const queries = await Query.find({ studentId: req.params.studentId })
@@ -842,7 +957,6 @@ app.get('/api/queries/student/:studentId', async (req, res) => {
   }
 });
 
-// Get all queries (for admin)
 app.get('/api/queries', async (req, res) => {
   try {
     const queries = await Query.find().sort({ createdAt: -1 });
@@ -852,7 +966,6 @@ app.get('/api/queries', async (req, res) => {
   }
 });
 
-// Admin responds to a query
 app.put('/api/queries/:id/respond', async (req, res) => {
   try {
     const { adminResponse } = req.body;
@@ -873,7 +986,6 @@ app.put('/api/queries/:id/respond', async (req, res) => {
   }
 });
 
-// Delete a query
 app.delete('/api/queries/:id', async (req, res) => {
   try {
     const query = await Query.findByIdAndDelete(req.params.id);
@@ -888,7 +1000,6 @@ app.delete('/api/queries/:id', async (req, res) => {
 
 // ==================== FEEDBACK APIs ====================
 
-// Student submits feedback
 app.post('/api/feedback', async (req, res) => {
   try {
     const { studentId, studentName, category, rating, message } = req.body;
@@ -908,7 +1019,6 @@ app.post('/api/feedback', async (req, res) => {
   }
 });
 
-// Get feedback for a specific student
 app.get('/api/feedback/student/:studentId', async (req, res) => {
   try {
     const feedbacks = await Feedback.find({ studentId: req.params.studentId })
@@ -919,7 +1029,6 @@ app.get('/api/feedback/student/:studentId', async (req, res) => {
   }
 });
 
-// Get all feedback (for admin)
 app.get('/api/feedback', async (req, res) => {
   try {
     const feedbacks = await Feedback.find().sort({ createdAt: -1 });
@@ -929,7 +1038,6 @@ app.get('/api/feedback', async (req, res) => {
   }
 });
 
-// Admin responds to feedback
 app.put('/api/feedback/:id/respond', async (req, res) => {
   try {
     const { adminResponse, status } = req.body;
@@ -950,7 +1058,6 @@ app.put('/api/feedback/:id/respond', async (req, res) => {
   }
 });
 
-// Delete feedback
 app.delete('/api/feedback/:id', async (req, res) => {
   try {
     const feedback = await Feedback.findByIdAndDelete(req.params.id);

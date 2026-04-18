@@ -10,7 +10,7 @@ async function testStudentLogin() {
       body: JSON.stringify({
         name: 'SOLEN SARKAR',
         rollNumber: '07',
-        dateOfBirth: '30-10-2001'
+dateOfBirth: '30-October-2001'
       }),
     });
 

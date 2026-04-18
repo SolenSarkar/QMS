@@ -393,9 +393,14 @@ const questionsByTopic = getQuestionsByTopic();
     const [localClass, setLocalClass] = useState(selectedClass);
     const [localSubject, setLocalSubject] = useState(selectedSubject);
     const [localTopic, setLocalTopic] = useState(selectedTopic);
-    const [localMarks, setLocalMarks] = useState(selectedMarks);
-    const [localType, setLocalType] = useState(selectedType);
+const [localMarks, setLocalMarks] = useState(selectedMarks);
+const [localType, setLocalType] = useState(selectedType);
     const [localOptions, setLocalOptions] = useState([""]);
+    const [localImage, setLocalImage] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
+    const [imageUrl, setImageUrl] = useState('');
+    const fileInputRef = useRef(null);
+    const [uploadMethod, setUploadMethod] = useState('local');
     const [localQuestion, setLocalQuestion] = useState("");
     const [localAnswer, setLocalAnswer] = useState("");
     const [localSubjects, setLocalSubjects] = useState([]);
@@ -429,11 +434,36 @@ const questionsByTopic = getQuestionsByTopic();
 
     // Handle type change for options in popup
     const handleLocalTypeChange = (e) => {
-      setLocalType(e.target.value);
-      if (e.target.value === "single" || e.target.value === "multiple") {
+      const newType = e.target.value;
+      setLocalType(newType);
+      if (newType === "single" || newType === "multiple") {
         setLocalOptions([""]);
       } else {
         setLocalOptions([]);
+      }
+      if (newType !== "picture") {
+        setLocalImage(null);
+        setImagePreview(null);
+      }
+    };
+
+    const handleImageChange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        setLocalImage(file);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setImagePreview(reader.result);
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+
+    const removeImage = () => {
+      setLocalImage(null);
+      setImagePreview(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
       }
     };
     const handleLocalOptionChange = (idx, value) => {
@@ -544,8 +574,57 @@ const questionsByTopic = getQuestionsByTopic();
                 <option value="multiple">Multiple Choice</option>
                 <option value="text">Text</option>
                 <option value="numeric">Numeric</option>
+                <option value="picture">Picture</option>
               </select>
             </label>
+            {localType === 'picture' && (
+              <div style={{ marginTop: 12, padding: 12, backgroundColor: '#f8f9ff', borderRadius: 8, border: '1px solid #e0e7ff' }}>
+                <label style={{ fontWeight: 600, color: '#1e40af', marginBottom: 8, display: 'block' }}>Image Upload:</label>
+                <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', padding: 6, borderRadius: 6, backgroundColor: uploadMethod === 'local' ? '#dbeafe' : 'transparent' }}>
+                    <input type="radio" name="uploadMethod" value="local" checked={uploadMethod === 'local'} onChange={(e) => setUploadMethod(e.target.value)} style={{ margin: 0 }} />
+                    <span>Local File</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', padding: 6, borderRadius: 6, backgroundColor: uploadMethod === 'url' ? '#dbeafe' : 'transparent' }}>
+                    <input type="radio" name="uploadMethod" value="url" checked={uploadMethod === 'url'} onChange={(e) => setUploadMethod(e.target.value)} style={{ margin: 0 }} />
+                    <span>Web URL</span>
+                  </label>
+                </div>
+                {uploadMethod === 'local' && (
+                  <div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      style={{ width: '100%', padding: 10, borderRadius: 6, border: '1.5px solid #bfc8e0', background: '#f8fafc' }}
+                    />
+                    {imagePreview && (
+                      <div style={{ marginTop: 12 }}>
+                        <img src={imagePreview} alt="Preview" style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                        <button onClick={removeImage} style={{ marginTop: 8, padding: '4px 12px', background: '#ef4444', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Remove</button>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {uploadMethod === 'url' && (
+                  <div>
+                    <input
+                      type="url"
+                      value={imageUrl}
+                      onChange={(e) => setImageUrl(e.target.value)}
+                      placeholder="https://example.com/image.jpg"
+                      style={{ width: '100%', padding: 10, borderRadius: 6, border: '1.5px solid #bfc8e0', background: '#f8fafc' }}
+                    />
+                    {imageUrl && (
+                      <div style={{ marginTop: 12 }}>
+                        <img src={imageUrl} alt="Preview" style={{ maxWidth: '100%', maxHeight: 200, borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} onError={(e) => e.target.style.display = 'none'} />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
             {(localType === "single" || localType === "multiple") && (
               <div style={{ marginBottom: 8 }}>
                 <label style={{ fontWeight: 600, color: '#333', marginBottom: 2, textAlign: 'left', display: 'block' }}>Options:</label>

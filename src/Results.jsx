@@ -334,6 +334,25 @@ export default function Results({ onHomeClick }) {
                         <p style={{ margin: 0, fontSize: '1.1em', fontWeight: 600, color: answer.isCorrect ? '#2e7d32' : '#c62828' }}>
                           {userAnswerDisplay}
                         </p>
+                        {answer.imageUrl && (
+                          <div style={{ marginTop: 12 }}>
+                            <p style={{ margin: '0 0 8px 0', fontSize: '0.8em', fontWeight: 600, color: '#1976d2' }}>📷 Supporting Image:</p>
+                            <img 
+                              src={`https://qms-sjuv.onrender.com${answer.imageUrl}`} 
+                              alt="Student answer" 
+                              style={{ 
+                                maxWidth: '200px', 
+                                maxHeight: '150px', 
+                                borderRadius: 8, 
+                                border: '2px solid #e0e0e0',
+                                objectFit: 'contain'
+                              }} 
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        )}
                       </div>
                       
                       {/* Show options for multiple choice questions */}

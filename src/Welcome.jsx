@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_ENDPOINTS } from './api.js';
 import './App.css';
 import { showToast } from './Toast';
 
@@ -33,7 +34,7 @@ function Welcome({ onSignIn, onBack, onStudentSignIn, onAdminSignIn }) {
     const dob = `${student.day}-${student.month}-${student.year}`;
     
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://qms-sjuv.onrender.com'}/api/students/login`, {
+      const response = await fetch(API_ENDPOINTS.STUDENT_LOGIN, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
