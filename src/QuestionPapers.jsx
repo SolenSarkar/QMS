@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { API_ENDPOINTS } from './api.js';
 import "./App.css";
 import { showToast } from "./Toast";
 
@@ -26,37 +27,42 @@ export default function QuestionPapers({ onHomeClick }) {
 
   // Fetch boards and classes
   useEffect(() => {
-fetch("https://qms-sjuv.onrender.com/api/attributes")
+    fetch(API_ENDPOINTS.ATTRIBUTES)
       .then(res => res.json())
       .then(attrs => {
         const boardAttr = attrs.find(a => a.name.toLowerCase() === "board");
         if (boardAttr) {
-fetch("https://qms-sjuv.onrender.com/api/values/${boardAttr._id}")
+          fetch(API_ENDPOINTS.VALUES(boardAttr._id))
             .then(res => res.json())
-            .then(data => setBoards(data.filter(v => v.status === 'Active')));
+            .then(data => setBoards(data.filter(v => v.status === 'Active')))
+            .catch(err => console.error('Failed to fetch boards:', err));
         }
         const classAttr = attrs.find(a => a.name.toLowerCase() === "class");
         if (classAttr) {
-          fetch(`https://qms-sjuv.onrender.com/api/values/${classAttr._id}`)
+          fetch(API_ENDPOINTS.VALUES(classAttr._id))
             .then(res => res.json())
-            .then(data => setClasses(data.filter(v => v.status === 'Active')));
+            .then(data => setClasses(data.filter(v => v.status === 'Active')))
+            .catch(err => console.error('Failed to fetch classes:', err));
         }
         const subjectAttr = attrs.find(a => a.name.toLowerCase() === "subject");
         if (subjectAttr) {
-          fetch(`https://qms-sjuv.onrender.com/api/values/${subjectAttr._id}`)
+          fetch(API_ENDPOINTS.VALUES(subjectAttr._id))
             .then(res => res.json())
             .then(data => {
               setAllSubjects(data.filter(v => v.status === 'Active'));
               setSubjects(data.filter(v => v.status === 'Active'));
-            });
+            })
+            .catch(err => console.error('Failed to fetch subjects:', err));
         }
         const topicAttr = attrs.find(a => a.name.toLowerCase() === "topic");
         if (topicAttr) {
-          fetch(`https://qms-sjuv.onrender.com/api/values/${topicAttr._id}`)
+          fetch(API_ENDPOINTS.VALUES(topicAttr._id))
             .then(res => res.json())
-            .then(data => setTopics(data.filter(v => v.status === 'Active')));
+            .then(data => setTopics(data.filter(v => v.status === 'Active')))
+            .catch(err => console.error('Failed to fetch topics:', err));
         }
-      });
+      })
+      .catch(err => console.error('Failed to fetch attributes:', err));
   }, []);
 
   // Get all classes from database (no filtering)

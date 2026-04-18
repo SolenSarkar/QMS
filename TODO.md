@@ -1,10 +1,1 @@
-# Fix Student Login 401 Error
-
-## Steps:
-
-- [x] Step 1: Edit backend/server.js to fix DOB parsing bug, add trimming/logging.
-- [ ] Step 2: Test login with month name DOB (backend/test_student_login.js).
-- [ ] Step 3: Revert test_student_login.js to original.
-- [ ] Step 4: Verify frontend Welcome.jsx login works.
-- [ ] Step 5: Complete task. 
-
+# Fix Board Select in Question Papers Page\n\n## Steps:\n1. [ ] Create this TODO.md\n2. [ ] Read current src/QuestionPapers.jsx (already done)\n3. [ ] Edit src/QuestionPapers.jsx: Import API_ENDPOINTS, fix/refactor useEffect fetches\n4. [ ] Verify edit success\n5. [ ] Test: Refresh page, check board dropdown populates\n6. [x] Mark complete & attempt_completion\n\n**Status**: Implementing...\n\n**Details**: Syntax error in board fetch template literal prevents boards from loading.
