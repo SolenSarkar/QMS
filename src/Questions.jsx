@@ -204,16 +204,32 @@ const [unlockedSubjects, setUnlockedSubjects] = useState([]);
     passkeyInputRef.current.focus();
   }
 }, [showPasskeyPopup]);
-  // Fetch questions for selected class and subject
-  useEffect(() => {
+  // Fetch questions for selected class and subject - with error handling
+  const fetchQuestions = async () => {
     if (!selectedClass || !activeTab) {
       setQuestions([]);
       return;
     }
-    fetch(`https://qms-sjuv.onrender.com/api/questions?classId=${selectedClass}&subjectId=${activeTab}`)
-      .then(res => res.json())
-      .then(setQuestions);
+    try {
+      console.log(`Fetching questions for classId=${selectedClass}, subjectId=${activeTab}`);
+      const response = await fetch(`https://qms-sjuv.onrender.com/api/questions?classId=${selectedClass}&subjectId=${activeTab}`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      const data = await response.json();
+      console.log(`Fetched ${data.length} questions`);
+      setQuestions(data);
+    } catch (error) {
+      console.error('Error fetching questions:', error);
+      showToast(`Failed to load questions: ${error.message}`, 'error');
+      setQuestions([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchQuestions();
   }, [selectedClass, activeTab]);
+
 
   // Handle type change for options
   const handleTypeChange = (e) => {
@@ -237,8 +253,8 @@ const [unlockedSubjects, setUnlockedSubjects] = useState([]);
     setOptionInputs(newOptions);
   };
 
-  // Add Question handler
-  const handleAddQuestion = () => {
+  // Add Question handler - FIXED: Refetch after success instead of optimistic update
+  const handleAddQuestion = async () => {
     // Basic validation
     if (!selectedBoard || !selectedClass || !selectedSubject || !selectedTopic || !selectedMarks || !selectedType || !questionText || !answerText) {
       showToast("Please fill all fields.", 'warning');
@@ -248,6 +264,7 @@ const [unlockedSubjects, setUnlockedSubjects] = useState([]);
       showToast("Please fill all options.", 'warning');
       return;
     }
+    
     const payload = {
       boardId: selectedBoard,
       classId: selectedClass,
@@ -259,28 +276,43 @@ const [unlockedSubjects, setUnlockedSubjects] = useState([]);
       text: questionText,
       answer: answerText
     };
-    fetch("https://qms-sjuv.onrender.com/api/questions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    })
-      .then(res => res.json())
-      .then(data => {
-        setQuestions(qs => [...qs, data]);
-        setShowAddPopup(false);
-        // Reset form fields
-        setSelectedBoard("");
-        setSelectedClass("");
-        setSelectedSubject("");
-        setSelectedTopic("");
-        setSelectedMarks("");
-        setSelectedType("");
-        setOptionInputs([""]);
-        setQuestionText("");
-        setAnswerText("");
-      })
-      .catch(() => showToast("Failed to add question. Please try again.", 'error'));
+    
+    try {
+      console.log('Adding question:', payload);
+      const response = await fetch("https://qms-sjuv.onrender.com/api/questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Question added:', data);
+      showToast('Question added successfully!', 'success');
+      
+      // Refetch questions to get fresh data
+      await fetchQuestions();
+      
+      setShowAddPopup(false);
+      // Reset form fields
+      setSelectedBoard("");
+      setSelectedClass("");
+      setSelectedSubject("");
+      setSelectedTopic("");
+      setSelectedMarks("");
+      setSelectedType("");
+      setOptionInputs([""]);
+      setQuestionText("");
+      setAnswerText("");
+    } catch (error) {
+      console.error('Error adding question:', error);
+      showToast("Failed to add question. Please try again.", 'error');
+    }
   };
+
   
 const handleSubjectClick = (subject) => {
   if (unlockedSubjects.includes(subject._id)) {
@@ -325,35 +357,36 @@ const getTopicName = (topicId) => {
   return topic ? topic.valueName : topicId;
 };
 
-const handleDelete = (id) => {
+const handleDelete = async (id) => {
   if (!confirm('Are you sure you want to delete this question?')) {
     return;
   }
-  console.log('Deleting question with ID:', id);
-  fetch(`https://qms-sjuv.onrender.com/api/questions/${id}`, {
-    method: 'DELETE'
-  })
-  .then(res => {
-    console.log('Delete response status:', res.status);
-    if (!res.ok) {
-      return res.json().then(err => { throw new Error(err.error || 'Delete failed'); });
+  
+  try {
+    console.log('Deleting question with ID:', id);
+    const response = await fetch(`https://qms-sjuv.onrender.com/api/questions/${id}`, {
+      method: 'DELETE'
+    });
+    
+    console.log('Delete response status:', response.status);
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `HTTP ${response.status}`);
     }
-    return res.json();
-  })
-  .then(data => {
-    console.log('Delete response data:', data);
-    setQuestions(qs => qs.filter(q => {
-      // Handle both string and ObjectId comparisons
-      const questionId = q._id.toString();
-      const deleteId = id.toString();
-      return questionId !== deleteId;
-    }));
-  })
-  .catch(err => {
+    
+    const data = await response.json();
+    console.log('Delete successful:', data);
+    showToast('Question deleted successfully!', 'success');
+    
+    // Refetch questions to get fresh data
+    await fetchQuestions();
+  } catch (err) {
     console.error('Delete error:', err);
     showToast('Failed to delete question: ' + err.message, 'error');
-  });
+  }
 };
+
 
 const toggleTopic = (topicId) => {
   setExpandedTopics(prev => ({
@@ -478,7 +511,7 @@ const [localType, setLocalType] = useState(selectedType);
     };
 
     // Add Question handler for popup
-    const handleLocalAddQuestion = () => {
+    const handleLocalAddQuestion = async () => {
       if (!localBoard || !localClass || !localSubject || !localTopic || !localMarks || !localType || !localQuestion || !localAnswer) {
         showToast("Please fill all fields.", 'warning');
         return;
@@ -487,6 +520,7 @@ const [localType, setLocalType] = useState(selectedType);
         showToast("Please fill all options.", 'warning');
         return;
       }
+      
       const payload = {
         boardId: localBoard,
         classId: localClass,
@@ -498,18 +532,30 @@ const [localType, setLocalType] = useState(selectedType);
         text: localQuestion,
         answer: localAnswer
       };
-      fetch("https://qms-sjuv.onrender.com/api/questions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      })
-        .then(res => res.json())
-        .then(data => {
-          setQuestions(qs => [...qs, data]);
-          setShowAddPopup(false);
-        })
-        .catch(() => showToast("Failed to add question. Please try again.", 'error'));
+      
+      try {
+        const response = await fetch("https://qms-sjuv.onrender.com/api/questions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        showToast('Question added successfully!', 'success');
+        
+        // Refetch questions
+        await fetchQuestions();
+        setShowAddPopup(false);
+      } catch (error) {
+        console.error('Error adding question:', error);
+        showToast("Failed to add question. Please try again.", 'error');
+      }
     };
+
     
     
     return (

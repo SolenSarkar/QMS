@@ -30,12 +30,25 @@ export default function QuestionPapers({ onHomeClick }) {
     fetch(API_ENDPOINTS.ATTRIBUTES)
       .then(res => res.json())
       .then(attrs => {
+        console.log('🔍 QuestionPapers - All attributes:', attrs);
         const boardAttr = attrs.find(a => a.name.toLowerCase() === "board");
+        console.log('🔍 QuestionPapers - Board attribute found:', boardAttr);
         if (boardAttr) {
+          console.log('🔍 QuestionPapers - Fetching boards for ID:', boardAttr._id);
           fetch(API_ENDPOINTS.VALUES(boardAttr._id))
-            .then(res => res.json())
-            .then(data => setBoards(data.filter(v => v.status === 'Active')))
-            .catch(err => console.error('Failed to fetch boards:', err));
+            .then(res => {
+              console.log('🔍 QuestionPapers - Boards API response status:', res.status);
+              return res.json();
+            })
+            .then(data => {
+              console.log('🔍 QuestionPapers - Raw boards data:', data);
+              const activeBoards = data.filter(v => v.status === 'Active');
+              console.log('🔍 QuestionPapers - Active boards after filter:', activeBoards);
+              setBoards(activeBoards);
+            })
+            .catch(err => console.error('❌ QuestionPapers - Failed to fetch boards:', err));
+        } else {
+          console.warn('⚠️ QuestionPapers - No "board" attribute found in attributes list');
         }
         const classAttr = attrs.find(a => a.name.toLowerCase() === "class");
         if (classAttr) {
@@ -62,7 +75,10 @@ export default function QuestionPapers({ onHomeClick }) {
             .catch(err => console.error('Failed to fetch topics:', err));
         }
       })
-      .catch(err => console.error('Failed to fetch attributes:', err));
+      .catch(err => {
+        console.error('❌ QuestionPapers - Failed to fetch attributes:', err);
+        showToast('Failed to load dropdown data. Check console for details.', 'error');
+      });
   }, []);
 
   // Get all classes from database (no filtering)

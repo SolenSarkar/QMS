@@ -254,11 +254,13 @@ app.get('/api/question-paper-permits/:questionPaperId', async (req, res) => {
 // Add a question (JSON or FormData with image)
 app.post('/api/questions', upload.single('image'), async (req, res) => {
   try {
+    console.log('Creating question with data:', req.body);
+    
     const questionData = {
-      boardId: req.body.boardId,
-      classId: req.body.classId,
-      subjectId: req.body.subjectId,
-      topicId: req.body.topicId,
+      boardId: req.body.boardId ? new mongoose.Types.ObjectId(req.body.boardId) : null,
+      classId: req.body.classId ? new mongoose.Types.ObjectId(req.body.classId) : null,
+      subjectId: req.body.subjectId ? new mongoose.Types.ObjectId(req.body.subjectId) : null,
+      topicId: req.body.topicId ? new mongoose.Types.ObjectId(req.body.topicId) : null,
       marks: parseInt(req.body.marks),
       type: req.body.type,
       options: req.body.options ? JSON.parse(req.body.options) : [],
@@ -266,8 +268,11 @@ app.post('/api/questions', upload.single('image'), async (req, res) => {
       answer: req.body.answer,
       imageUrl: req.file ? `/uploads/${req.file.filename}` : req.body.imageUrl || null
     };
+    
+    console.log('Question data prepared:', questionData);
     const q = new Question(questionData);
     await q.save();
+    console.log('Question saved successfully:', q._id);
     res.json(q);
   } catch (err) {
     console.error('Error saving question:', err);
@@ -275,14 +280,39 @@ app.post('/api/questions', upload.single('image'), async (req, res) => {
   }
 });
 
-// Get questions
+
+// Get questions - FIXED: Handle ObjectId/string query param matching
 app.get('/api/questions', async (req, res) => {
-  const filter = {};
-  if (req.query.classId) filter.classId = req.query.classId;
-  if (req.query.subjectId) filter.subjectId = req.query.subjectId;
-  const questions = await Question.find(filter);
-  res.json(questions);
+  try {
+    console.log('Questions query params:', req.query);
+    
+    const filter = {};
+    
+    if (req.query.classId) {
+      const classId = mongoose.Types.ObjectId.isValid(req.query.classId) 
+        ? new mongoose.Types.ObjectId(req.query.classId)
+        : req.query.classId;
+      filter.classId = classId;
+    }
+    
+    if (req.query.subjectId) {
+      const subjectId = mongoose.Types.ObjectId.isValid(req.query.subjectId)
+        ? new mongoose.Types.ObjectId(req.query.subjectId)
+        : req.query.subjectId;
+      filter.subjectId = subjectId;
+    }
+    
+    console.log('Questions filter applied:', filter);
+    const questions = await Question.find(filter);
+    console.log(`Found ${questions.length} questions matching filter`);
+    
+    res.json(questions);
+  } catch (error) {
+    console.error('Error fetching questions:', error);
+    res.status(500).json({ error: 'Failed to fetch questions', details: error.message });
+  }
 });
+
 
 // Delete a question by ID
 app.delete('/api/questions/:id', async (req, res) => {
