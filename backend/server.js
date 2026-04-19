@@ -838,6 +838,21 @@ app.get('/api/test-records/:studentId', async (req, res) => {
   }
 });
 
+// NEW: Test records summary for TestCard
+app.get('/api/test-records-summary/:studentId', async (req, res) => {
+  try {
+    const totalRecords = await TestRecord.countDocuments({ studentId: req.params.studentId });
+    const summary = {
+      total: totalRecords,
+      completed: totalRecords,  // All saved records are completed
+      pending: 0               // No pending concept currently
+    };
+    res.json(summary);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/test-records', studentAnswerUpload.array('answerImages'), async (req, res) => {
   try {
     let testData = {};

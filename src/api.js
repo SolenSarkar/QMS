@@ -78,8 +78,9 @@ export const API_ENDPOINTS = {
   ADMIN_LOGIN: `${API_BASE_URL}/api/admins/login`,
   SEED_ADMIN: `${API_BASE_URL}/api/seed-admin`,
   
-  // Test Records
+// Test Records
   TEST_RECORDS: (studentId) => `${API_BASE_URL}/api/test-records/${studentId}`,
+  TEST_SUMMARY: (studentId) => `${API_BASE_URL}/api/test-records-summary/${studentId}`,
   TEST_RECORD_DETAIL: (recordId) => `${API_BASE_URL}/api/test-records/detail/${recordId}`,
   TEST_RECORD_CHECK: (studentId, questionPaperId) => 
     `${API_BASE_URL}/api/test-records/check/${studentId}/${questionPaperId}`,

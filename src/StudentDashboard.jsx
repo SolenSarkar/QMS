@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { showToast } from './Toast';
+import API_ENDPOINTS from './api';
 
 function StudentDashboard({ name, studentData, onProjectTitleClick, onLogout }) {
   const rollNumber = studentData?.rollNumber || '';
@@ -27,8 +28,10 @@ function StudentDashboard({ name, studentData, onProjectTitleClick, onLogout }) 
   const [reviewRecord, setReviewRecord] = useState(null);
 
   const [testRecords, setTestRecords] = useState([]);
+  const [testSummary, setTestSummary] = useState({ total: 0, completed: 0, pending: 0 });
   const [loadingResults, setLoadingResults] = useState(false);
   const [loadingTestCard, setLoadingTestCard] = useState(true);
+  const [loadingTestSummary, setLoadingTestSummary] = useState(true);
   const [attemptedPapers, setAttemptedPapers] = useState({}); // Track which papers have been attempted
 
   const [activeTest, setActiveTest] = useState(null);
@@ -556,11 +559,28 @@ useEffect(() => {
   useEffect(() => {
     if (!studentId) {
       setLoadingTestCard(false);
+      setLoadingTestSummary(false);
       return;
     }
+    
+    // Fetch test summary for TestCard (lightweight counts)
+    const fetchTestSummary = async () => {
+      try {
+        const response = await fetch(API_ENDPOINTS.TEST_SUMMARY(studentId));
+        if (response.ok) {
+          const data = await response.json();
+          setTestSummary(data);
+        }
+      } catch (err) {
+        console.error("Error fetching test summary:", err);
+      }
+      setLoadingTestSummary(false);
+    };
+    
+    // Keep existing test records fetch for detailed list
     const fetchTestCardData = async () => {
       try {
-        const response = await fetch(`https://qms-sjuv.onrender.com/api/test-records/${studentId}`);
+        const response = await fetch(API_ENDPOINTS.TEST_RECORDS(studentId));
         if (response.ok) {
           const data = await response.json();
           setTestRecords(data);
@@ -570,6 +590,8 @@ useEffect(() => {
       }
       setLoadingTestCard(false);
     };
+    
+    fetchTestSummary();
     fetchTestCardData();
   }, [studentId]);
 
@@ -1226,21 +1248,21 @@ useEffect(() => {
             </div>
             <div className='testcard-container' style={{background: '#f7f7f8', padding: '20px', borderRadius: 5}}>
               <h3>TestCard</h3>
-              {loadingTestCard ? (
+              {(loadingTestSummary || loadingTestCard) ? (
                 <p style={{ textAlign: 'center', padding: '10px', color: '#666' }}>Loading...</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 15 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#e3f2fd', borderRadius: 8, borderLeft: '4px solid #2196f3' }}>
                     <span style={{ fontSize: 14, fontWeight: 600, color: '#1565c0' }}>Total Tests</span>
-                    <span style={{ fontSize: 20, fontWeight: 700, color: '#1976d2' }}>{testRecords.length}</span>
+                    <span style={{ fontSize: 20, fontWeight: 700, color: '#1976d2' }}>{testSummary.total}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#e8f5e9', borderRadius: 8, borderLeft: '4px solid #4caf50' }}>
                     <span style={{ fontSize: 14, fontWeight: 600, color: '#1b5e20' }}>Completed</span>
-                    <span style={{ fontSize: 20, fontWeight: 700, color: '#2e7d32' }}>{testRecords.length}</span>
+                    <span style={{ fontSize: 20, fontWeight: 700, color: '#2e7d32' }}>{testSummary.completed}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#fff3e0', borderRadius: 8, borderLeft: '4px solid #ff9800' }}>
                     <span style={{ fontSize: 14, fontWeight: 600, color: '#bf360c' }}>Pending</span>
-                    <span style={{ fontSize: 20, fontWeight: 700, color: '#e65100' }}>0</span>
+                    <span style={{ fontSize: 20, fontWeight: 700, color: '#e65100' }}>{testSummary.pending}</span>
                   </div>
                 </div>
               )}
