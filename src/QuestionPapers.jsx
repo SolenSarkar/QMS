@@ -197,8 +197,11 @@ export default function QuestionPapers({ onHomeClick }) {
     color: isActive ? '#fff' : '#333'
   });
 
-  // State for managing saved question papers
+// State for managing saved question papers
   const [savedPapers, setSavedPapers] = useState([]);
+  // NEW: State for permits
+  const [permits, setPermits] = useState([]);
+  const [loadingPermits, setLoadingPermits] = useState(false);
   const [viewMode, setViewMode] = useState('create'); // 'create', 'manage', or 'permit'
   const [selectedSavedPaper, setSelectedSavedPaper] = useState(null);
   const [loadingSavedPapers, setLoadingSavedPapers] = useState(false);
@@ -218,12 +221,31 @@ export default function QuestionPapers({ onHomeClick }) {
     setLoadingSavedPapers(false);
   };
 
-  // Load saved papers when switching to manage or permit mode
+  // Load saved papers and permits when switching to manage or permit mode
   useEffect(() => {
     if (viewMode === 'manage' || viewMode === 'permit') {
       fetchSavedPapers();
     }
+    if (viewMode === 'permit') {
+      fetchPermits();
+    }
   }, [viewMode]);
+
+  // NEW: Fetch permits function
+  const fetchPermits = async () => {
+    setLoadingPermits(true);
+    try {
+      const response = await fetch(API_ENDPOINTS.QUESTION_PAPER_PERMITS);
+      if (response.ok) {
+        const data = await response.json();
+        setPermits(data);
+      }
+    } catch (err) {
+      console.error('Error fetching permits:', err);
+      showToast('Failed to load permits', 'error');
+    }
+    setLoadingPermits(false);
+  };
 
   // Delete a question paper
   const deletePaper = async (paperId) => {
@@ -400,6 +422,30 @@ export default function QuestionPapers({ onHomeClick }) {
   const [endDate, setEndDate] = useState("");
   const [timeLimit, setTimeLimit] = useState(60); // default 60 minutes
 
+  // NEW: Delete permit
+  const deletePermit = async (permitId) => {
+    if (!window.confirm('Are you sure you want to delete this permit?')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${API_ENDPOINTS.QUESTION_PAPER_PERMITS}/${permitId}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        showToast('Permit deleted successfully!', 'success');
+        fetchPermits(); // Refresh list
+      } else {
+        const result = await response.json();
+        showToast(`Failed to delete: ${result.error || 'Unknown error'}`, 'error');
+      }
+    } catch (err) {
+      console.error('Error deleting permit:', err);
+      showToast('Error deleting permit', 'error');
+    }
+  };
+
   // Save permit settings
   const savePermit = async () => {
     if (!permitPaper) {
@@ -430,7 +476,7 @@ export default function QuestionPapers({ onHomeClick }) {
 
       console.log('Saving permit with data:', permitData);
       
-      const response = await fetch('https://qms-sjuv.onrender.com/api/question-paper-permits', {
+      const response = await fetch(API_ENDPOINTS.QUESTION_PAPER_PERMITS, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(permitData)
@@ -438,6 +484,8 @@ export default function QuestionPapers({ onHomeClick }) {
 
       if (response.ok) {
         showToast('Permit saved successfully! Students can now access this question paper during the specified time.', 'success');
+        // NEW: Refresh permits list
+        await fetchPermits();
         // Reset form
         setPermitPaper(null);
         setStartDate("");
@@ -783,6 +831,82 @@ export default function QuestionPapers({ onHomeClick }) {
               </div>
 
               {/* Permit Settings */}
+              {/* NEW: Existing Permits List */}
+              <div style={{ marginBottom: 24 }}>
+                <h4 style={{ marginBottom: 16, color: '#333', fontSize: '1.2em' }}>
+                  Existing Permits ({permits.length})
+                </h4>
+                {loadingPermits ? (
+                  <p style={{ textAlign: 'center', padding: 20 }}>Loading permits...</p>
+                ) : permits.length === 0 ? (
+                  <p style={{ textAlign: 'center', padding: 20, color: '#888', fontStyle: 'italic' }}>
+                    No permits created yet. Create one above!
+                  </p>
+                ) : (
+                  <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))' }}>
+                    {permits.map((permit) => (
+                      <div 
+                        key={permit._id}
+                        style={{ 
+                          border: '1px solid #e0e0e0', 
+                          borderRadius: 8, 
+                          padding: 20,
+                          background: '#f9f9f9',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                          <div>
+                            <h5 style={{ margin: '0 0 8px 0', color: '#1976d2', fontSize: '1.1em' }}>
+                              {permit.questionPaperId?.subject} - {permit.questionPaperId?.class}
+                            </h5>
+                            <p style={{ margin: '4px 0', fontSize: '0.9em', color: '#666' }}>
+                              <strong>Board:</strong> {permit.questionPaperId?.board}
+                            </p>
+                            <p style={{ margin: '4px 0', fontSize: '0.9em' }}>
+                              <strong>Period:</strong> {new Date(permit.startDate).toLocaleString()} → {new Date(permit.endDate).toLocaleString()}
+                            </p>
+                            <p style={{ margin: '4px 0', fontSize: '0.9em', color: '#4caf50' }}>
+                              <strong>Time Limit:</strong> {permit.timeLimit} minutes
+                            </p>
+                          </div>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button 
+                              className="cta-button"
+                              onClick={() => {
+                                setGeneratedPaper(permit.questionPaperId);
+                                setShowPreview(true);
+                              }}
+                              style={{ padding: '6px 12px', fontSize: '0.85em' }}
+                              title="View Paper"
+                            >
+                              View Paper
+                            </button>
+                            <button 
+                              onClick={() => deletePermit(permit._id)}
+                              style={{
+                                padding: '6px 12px',
+                                fontSize: '0.85em',
+                                background: '#d32f2f',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: 4,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                        <div style={{ fontSize: '0.8em', color: '#888', borderTop: '1px solid #eee', paddingTop: 8 }}>
+                          Created: {new Date(permit.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {permitPaper && (
                 <div style={{ 
                   border: '2px solid #4caf50', 
@@ -791,7 +915,7 @@ export default function QuestionPapers({ onHomeClick }) {
                   background: '#f1f8e9'
                 }}>
                   <h4 style={{ marginTop: 0, marginBottom: 16, color: '#2e7d32', fontSize: '1.2em' }}>
-                    Permit Settings for: {permitPaper.subject} - {permitPaper.class}
+                    Create New Permit for: {permitPaper.subject} - {permitPaper.class}
                   </h4>
                   
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20 }}>

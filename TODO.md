@@ -1,1 +1,20 @@
-# QMS Project - Task Tracking\n\n## Current Task: Fix TestCard Incorrect Values\n\n### Breakdown Steps:\n\n#### 1. [✅] Create TODO.md tracking file\n\n#### 2. [✅] Start backend server\n   - Active: node backend/server.js (port 5000)\n\n#### 3. [✅] Ensure test data exists\n   - Test student roll 07 ID: 69cff2728c6b2e47dee6d337 ready (0 TestRecords)\n\n#### 4. [✅] Start frontend dev server\n   - Active: npm run dev → http://localhost:5174\n\n#### 5. [MANUAL] Verify TestCard locally\n   - Login roll 07 → Check TestCard shows 0s correctly (no errors)\n   - Status: User verify\n\n#### 6. [ ] Deploy\n   - Backend Render, Frontend Vercel\n\n#### 7. [ ] Post-deploy test\n\n### Previous Code Changes (✅):\n- src/api.js: TEST_SUMMARY endpoint\n- backend/server.js: /api/test-records-summary/:studentId\n- src/StudentDashboard.jsx: Fetch/use summary for TestCard\n\n**Status:** Local setup ready. Verify TestCard in browser, then deploy.**
+# Fix QuestionPapers Permit Display Bug
+
+## Plan Steps
+- [ ] **Step 1**: Add permit states and fetchPermits() function to src/QuestionPapers.jsx
+- [ ] **Step 2**: Update 'permit' view UI to show existing permits list (cards) below paper selection
+- [ ] **Step 3**: Implement auto-refresh of permits after successful savePermit()
+- [ ] **Step 4**: Add deletePermit() function and UI button for permits
+- [ ] **Step 5**: Test permit creation → verify new record appears in list immediately
+- [ ] **Step 6**: attempt_completion with demo instructions
+
+**Current Progress**: ✅ Steps 1-4 completed (added states, fetchPermits, UI list, deletePermit, auto-refresh). Ready for Step 5 testing.
+
+## Plan Steps
+- [x] **Step 1**: Add permit states and fetchPermits() function to src/QuestionPapers.jsx
+- [x] **Step 2**: Update 'permit' view UI to show existing permits list (cards) below paper selection
+- [x] **Step 3**: Implement auto-refresh of permits after successful savePermit()
+- [x] **Step 4**: Add deletePermit() function and UI button for permits
+- [ ] **Step 5**: Test permit creation → verify new record appears in list immediately
+- [ ] **Step 6**: attempt_completion with demo instructions
+
