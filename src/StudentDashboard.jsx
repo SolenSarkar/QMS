@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 import { showToast } from './Toast';
 import API_ENDPOINTS from './api';
@@ -44,7 +44,11 @@ function StudentDashboard({ name, studentData, onProjectTitleClick, onLogout }) 
   const [testSubmitted, setTestSubmitted] = useState(false);
   const [testSubmitting, setTestSubmitting] = useState(false);
   const [testResult, setTestResult] = useState(null);
-const [showTestStartReminder, setShowTestStartReminder] = useState(false);
+  const [showTestStartReminder, setShowTestStartReminder] = useState(false);
+
+  // Voice recording states
+  const [isVoiceRecording, setIsVoiceRecording] = useState(false);
+  const recognitionRef = useRef(null);
   const [showExitWarning, setShowExitWarning] = useState(false);
 
   // Query management state
@@ -483,7 +487,76 @@ useEffect(() => {
     setTestTimeLeft(0);
     setTestSubmitted(false);
     setTestResult(null);
+    setIsVoiceRecording(false);
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
   };
+
+  // Speech Recognition setup
+  const setupSpeechRecognition = useCallback(() => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      showToast('Speech recognition not supported in this browser. Please use Chrome/Edge.', 'warning');
+      return null;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      setIsVoiceRecording(true);
+      console.log('Voice recording started');
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      const currentIdx = currentQuestionIndex;
+      setTextAnswers(prev => ({
+        ...prev,
+        [currentIdx]: (prev[currentIdx] || '') + ' ' + transcript
+      }));
+      showToast(`Transcribed: "${transcript}"`, 'success');
+      console.log('Transcribed:', transcript);
+    };
+
+    recognition.onerror = (event) => {
+      setIsVoiceRecording(false);
+      let errorMsg = 'Speech recognition error';
+      if (event.error === 'not-allowed') {
+        errorMsg = 'Microphone permission denied';
+      } else if (event.error === 'no-speech') {
+        errorMsg = 'No speech detected';
+      }
+      showToast(errorMsg, 'error');
+      console.error('Speech recognition error:', event.error);
+    };
+
+    recognition.onend = () => {
+      setIsVoiceRecording(false);
+      console.log('Voice recording ended');
+    };
+
+    recognitionRef.current = recognition;
+    return recognition;
+  }, [currentQuestionIndex]);
+
+  // Toggle voice input
+  const toggleVoiceInput = useCallback(() => {
+    if (isVoiceRecording) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      return;
+    }
+
+    const recognition = setupSpeechRecognition();
+    if (recognition) {
+      recognition.start();
+    }
+  }, [isVoiceRecording, setupSpeechRecognition]);
 
   const formatTimeLeft = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -1721,8 +1794,62 @@ useEffect(() => {
                   </div>
                   {questionType === 'text' ? (
                     <div style={{ marginTop: 16 }}>
-                      <textarea value={textAnswers[currentQuestionIndex] || ''} onChange={(e) => handleTextAnswerChange(currentQuestionIndex, e.target.value)} placeholder="Type your answer here..." rows={4} style={{ width: '100%', padding: '14px 16px', borderRadius: 8, border: '2px solid #e0e0e0', fontSize: '1em', fontFamily: 'inherit', resize: 'vertical', backgroundColor: '#fafafa', color: '#333' }} />
-                      <p style={{ marginTop: 8, fontSize: '0.85em', color: '#666' }}>{textAnswers[currentQuestionIndex]?.length > 0 ? '✓ Answer entered' : 'Please enter your answer above'}</p>
+                      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', marginBottom: 12 }}>
+                        <textarea 
+                          value={textAnswers[currentQuestionIndex] || ''} 
+                          onChange={(e) => handleTextAnswerChange(currentQuestionIndex, e.target.value)} 
+                          placeholder="Type your answer here or use 🎤 microphone..." 
+                          rows={4} 
+                          style={{ 
+                            flex: 1, 
+                            padding: '14px 16px', 
+                            borderRadius: 8, 
+                            border: '2px solid #e0e0e0', 
+                            fontSize: '1em', 
+                            fontFamily: 'inherit', 
+                            resize: 'vertical', 
+                            backgroundColor: '#fafafa', 
+                            color: '#333' 
+                          }} 
+                        />
+                        <button
+                          onClick={toggleVoiceInput}
+                          disabled={isVoiceRecording || !activeTest}
+                          style={{
+                            width: 56,
+                            height: 56,
+                            borderRadius: '50%',
+                            border: 'none',
+                            backgroundColor: isVoiceRecording ? '#f44336' : '#4caf50',
+                            color: 'white',
+                            fontSize: '1.5em',
+                            cursor: isVoiceRecording ? 'not-allowed' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                            transition: 'all 0.2s'
+                          }}
+                          title={isVoiceRecording ? 'Recording...' : 'Voice input'}
+                        >
+                          {isVoiceRecording ? '⏹️' : '🎤'}
+                        </button>
+                      </div>
+                      {isVoiceRecording && (
+                        <div style={{
+                          padding: 8,
+                          backgroundColor: '#ffebee',
+                          borderRadius: 6,
+                          textAlign: 'center',
+                          fontWeight: 600,
+                          color: '#c62828'
+                        }}>
+                          🔴 Recording... Speak now!
+                        </div>
+                      )}
+                      <p style={{ marginTop: 8, fontSize: '0.85em', color: '#666' }}>
+                        {textAnswers[currentQuestionIndex]?.length > 0 ? '✓ Answer entered (editable)' : 'Type or use voice input above'}
+                      </p>
                     </div>
                   ) : questionType === 'numeric' || questionType === 'text' ? (
                     <div style={{ marginTop: 16 }}>
