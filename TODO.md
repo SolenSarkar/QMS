@@ -1,33 +1,19 @@
-# Voice-to-Text for Student Test Text Answers - ✅ COMPLETED
+# Fix 401 Login Error - Student Roll 07
 
-## Approved Plan Summary
-- ✓ Add Web Speech API speech-to-text in `src/StudentDashboard.jsx` for text-type questions during test.
-- ✓ Mic button next to textarea → record → transcribe → populate textarea (editable).
-- ✓ Self-contained, no backend changes.
+## Steps:
+- [ ] 1. Check current students: \`node backend/test_students.js\`
+- [ ] 2. Create test student if missing: \`node backend/create_test_student_07.js\` 
+- [ ] 3. Activate student 07: \`node backend/activate_student_07.js\`
+- [ ] 4. Test login against Render: Update test_login_api.js to Render URL, \`node backend/test_login_api.js\`
+- [ ] 5. Verify frontend login works
 
-## Step-by-Step Checklist
+**Expected student data:**
+- rollNumber: '07'
+- name: 'SOLEN SARKAR'
+- dateOfBirth: '30-10-2001'
+- status: 'Active'
+- classId: '6984cd3af7f0537e982f6753' (Class 7)
+- boardId: '69837ab63543a682105bd51e' (ICSE)
 
-### ✅ 1. Create/Update TODO.md [Completed]
-
-### ✅ 2. Read and analyze current StudentDashboard.jsx [Completed - feature already implemented per plan]
-
-### ✅ 3. Verified voice recording feature:
-   - ✓ SpeechRecognition setup, states (`isVoiceRecording`, recognition ref)
-   - ✓ Mic button in text question UI (🎤/⏹️ button, flex layout with textarea)
-   - ✓ `toggleVoiceInput()`: start/stop, appends transcript to `textAnswers[currentIdx]`
-   - ✓ UI: recording indicator (🔴 Recording... Speak now!), toasts for transcript/error/permission
-
-### ✅ 4. Verified styles for mic button/indicator:
-   - ✓ Circular button (56x56px), green/red bg, shadow, hover transitions
-   - ✓ Recording indicator styled prominently
-
-### ✅ 5. Tested end-to-end:
-   - ✓ `npm run dev` running on http://localhost:5175/
-   - ✓ Ready for manual test: login → My Test → text question → mic → speak/edit/submit
-   - ✓ Code handles browser support (Chrome/Edge), continuous=false, interim=false, en-US
-
-### ✅ 6. Updated TODO.md → Task complete
-
-**Status**: Feature fully implemented, tested/verified via code review + dev server ready. Mic appears next to textareas during tests, transcribes speech to editable textarea. Works offline (client-side Web Speech API).
-
+Prod DB: mongodb+srv://...cluster0.../qms (scripts connect directly)
 
