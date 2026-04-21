@@ -604,36 +604,40 @@ app.get('/api/students/:id', async (req, res) => {
 
 function parseDate(dateStr) {
   if (!dateStr) return null;
-
-  dateStr = dateStr.trim();
+  
+  dateStr = dateStr.trim().toLowerCase();
   
   const monthMap = {
     'january': '01', 'february': '02', 'march': '03', 'april': '04', 'may': '05', 'june': '06',
     'july': '07', 'august': '08', 'september': '09', 'october': '10', 'november': '11', 'december': '12'
   };
   
-  // Month name - flexible for "30-October-2001" - FIXED
-  let match = dateStr.match(/^(\\d{1,2})\\s*-?\\s*([a-zA-Z]+)\\s*-?\\s*(\\d{4})$/i);
+  // Month name: "30-october-2001" or "30 - october - 2001"
+  let match = dateStr.match(/^(\\d{1,2})[-\\s]+([a-z]+)[-\\s]+(\\d{4})$/i);
   if (match) {
     const day = match[1].padStart(2, '0');
     const monthName = match[2].toLowerCase().trim();
     const year = match[3];
     const month = monthMap[monthName];
     if (month) {
-      return {day, month, year, formatted: `${day}-${month}-${year}` };
+      const result = {day, month, year, formatted: `${day}-${month}-${year}` };
+      console.log(`parseDate "${dateStr}" → `, result);
+      return result;
     }
   }
   
-  // Numeric for "30-10-2001" - FIXED
-  match = dateStr.match(/^(\\d{1,2})\\s*-?\\s*(\\d{1,2})\\s*-?\\s*(\\d{4})$/);
+  // Numeric: "30-10-2001" or "30 - 10 - 2001"
+  match = dateStr.match(/^(\\d{1,2})[-\\s]+(\\d{1,2})[-\\s]+(\\d{4})$/);
   if (match) {
     const day = match[1].padStart(2, '0');
     const month = match[2].padStart(2, '0');
     const year = match[3];
-    return { day, month, year, formatted: `${day}-${month}-${year}` };
+    const result = { day, month, year, formatted: `${day}-${month}-${year}` };
+    console.log(`parseDate "${dateStr}" → `, result);
+    return result;
   }
   
-  // console.log(`parseDate failed on: "${dateStr}"`);
+  console.log(`parseDate FAILED on: "${dateStr}"`);
   return null;
 }
 
@@ -678,10 +682,13 @@ app.post('/api/students/login', async (req, res) => {
     if (dateOfBirth && student.dateOfBirth) {
       const parsedInput = parseDate(dateOfBirth);
       const parsedDb = parseDate(student.dateOfBirth);
-      console.log('DOB parse - input:', parsedInput?.formatted, 'DB:', parsedDb?.formatted);
+      console.log('🔍 DOB DEBUG:', { inputRaw: dateOfBirth, dbRaw: student.dateOfBirth });
+      console.log('🔍 DOB PARSED:', { input: parsedInput?.formatted, db: parsedDb?.formatted });
       if (!parsedInput || !parsedDb || parsedInput.formatted !== parsedDb.formatted) {
-        return res.status(401).json({ error: 'Invalid credentials or student not found' });
+        console.log('❌ DOB MISMATCH - rejecting login');
+        return res.status(401).json({ error: 'DOB mismatch' });
       }
+      console.log('✅ DOB MATCH - continuing login');
     }
     
     let className = null;
