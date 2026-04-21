@@ -72,7 +72,9 @@ async function testLoginQuery() {
     console.log('\\n--- DOB Parse ---');
     console.log('DB parsed:', parsedDb);
     console.log('Num input parsed:', parsedNumInput);
-    console.log('DB vs Num match:', parsedDb.formatted === parsedNumInput.formatted);
+    console.log('DB vs Num match:', parsedDb ? parsedDb.formatted === parsedNumInput.formatted : 'DB null');
+    console.log('Name input parsed:', parsedNameInput);
+    console.log('DB vs Name match:', parsedDb ? parsedDb.formatted === parsedNameInput.formatted : 'DB null');
     console.log('Name input parsed:', parsedNameInput);
     console.log('DB vs Name match:', parsedDb.formatted === parsedNameInput.formatted);
   }

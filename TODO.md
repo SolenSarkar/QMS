@@ -1,19 +1,19 @@
-# Fix 401 Login Error - Student Roll 07
+# Fix 401 Unauthorized on /api/students/login - FIXED!
 
-## Steps:
-- [ ] 1. Check current students: \`node backend/test_students.js\`
-- [ ] 2. Create test student if missing: \`node backend/create_test_student_07.js\` 
-- [ ] 3. Activate student 07: \`node backend/activate_student_07.js\`
-- [ ] 4. Test login against Render: Update test_login_api.js to Render URL, \`node backend/test_login_api.js\`
-- [ ] 5. Verify frontend login works
+## Analysis:
+parseDate regex failed on '30-10-2001' (no spaces around -) → null → DOB fail → 401
 
-**Expected student data:**
-- rollNumber: '07'
-- name: 'SOLEN SARKAR'
-- dateOfBirth: '30-10-2001'
-- status: 'Active'
-- classId: '6984cd3af7f0537e982f6753' (Class 7)
-- boardId: '69837ab63543a682105bd51e' (ICSE)
+## Changes:
+Fixed both regex patterns in backend/server.js:
+- Month: `/^(\\d{1,2})-*([a-zA-Z]+)-*(\\d{4})$/i`
+- Numeric: `/^(\\d{1,2})-*(\\d{1,2})-*(\\d{4})$/`
 
-Prod DB: mongodb+srv://...cluster0.../qms (scripts connect directly)
+## Plan Steps:
+- [x] 1. Create/activate test student ✓
+- [x] 2. Verify data ✓
+- [x] 3. Debug → regex bug
+- [x] 4. Fix regex in server.js ✓
+- [ ] 5. Test login endpoint
+- [ ] 6. Frontend login works
 
+## Status: Testing login
