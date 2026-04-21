@@ -401,6 +401,16 @@ app.get('/api/seed-admin', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Helper function for ObjectId validation
+function validateObjectId(id, modelName = 'ID') {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    const error = new Error(`Invalid ${modelName} format`);
+    error.status = 400;
+    throw error;
+  }
+  return id;
+}
+
 // ===== STUDENT APIs - FIXED LOGIN =====
 app.get('/api/students', async (req, res) => {
   try { 

@@ -575,6 +575,16 @@ app.put('/api/admins/:id/status', async (req, res) => {
   }
 });
 
+// Helper function for ObjectId validation
+function validateObjectId(id, modelName = 'ID') {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    const error = new Error(`Invalid ${modelName} format`);
+    error.status = 400;
+    throw error;
+  }
+  return id;
+}
+
 // ==================== STUDENT APIs ====================
 
 app.get('/api/students', async (req, res) => {
@@ -590,7 +600,8 @@ app.get('/api/students', async (req, res) => {
 
 app.get('/api/students/:id', async (req, res) => {
   try {
-    const student = await Student.findById(req.params.id)
+    const studentId = validateObjectId(req.params.id, 'student ID');
+    const student = await Student.findById(studentId)
       .populate('classId', 'valueName')
       .populate('boardId', 'valueName');
     if (!student) {
@@ -598,6 +609,9 @@ app.get('/api/students/:id', async (req, res) => {
     }
     res.json(student);
   } catch (err) {
+    if (err.status === 400) {
+      return res.status(400).json({ error: err.message });
+    }
     res.status(500).json({ error: err.message });
   }
 });
@@ -651,6 +665,10 @@ function normalizeDateForComparison(dateStr1, dateStr2) {
   
   return parsed1.formatted === parsed2.formatted;
 }
+
+app.get('/api/students/login', (req, res) => {
+  res.status(405).json({ error: 'Method Not Allowed', message: 'Login endpoint requires POST method. Use POST to login.' });
+});
 
 app.post('/api/students/login', async (req, res) => {
   try {
@@ -746,15 +764,16 @@ app.post('/api/students', async (req, res) => {
 
 app.put('/api/students/:id', async (req, res) => {
   try {
+    const studentId = validateObjectId(req.params.id, 'student ID');
     const data = { ...req.body };
     if (data.classId === "" || data.classId === null || data.classId === undefined) {
       delete data.classId;
     }
-    if (data.boardId === "" || data.boardId === null || data.bodyId === undefined) {
+    if (data.boardId === "" || data.boardId === null || data.boardId === undefined) {
       delete data.boardId;
     }
     
-    const student = await Student.findByIdAndUpdate(req.params.id, data, { new: true })
+    const student = await Student.findByIdAndUpdate(studentId, data, { new: true })
       .populate('classId', 'valueName')
       .populate('boardId', 'valueName');
     if (!student) {
@@ -762,25 +781,33 @@ app.put('/api/students/:id', async (req, res) => {
     }
     res.json(student);
   } catch (err) {
+    if (err.status === 400) {
+      return res.status(400).json({ error: err.message });
+    }
     res.status(400).json({ error: err.message });
   }
 });
 
 app.delete('/api/students/:id', async (req, res) => {
   try {
-    const student = await Student.findByIdAndDelete(req.params.id);
+    const studentId = validateObjectId(req.params.id, 'student ID');
+    const student = await Student.findByIdAndDelete(studentId);
     if (!student) {
       return res.status(404).json({ error: 'Student not found' });
     }
     res.json({ message: 'Student deleted successfully' });
   } catch (err) {
+    if (err.status === 400) {
+      return res.status(400).json({ error: err.message });
+    }
     res.status(500).json({ error: err.message });
   }
 });
 
 app.put('/api/students/:id/status', async (req, res) => {
   try {
-    const student = await Student.findById(req.params.id);
+    const studentId = validateObjectId(req.params.id, 'student ID');
+    const student = await Student.findById(studentId);
     if (!student) {
       return res.status(404).json({ error: 'Student not found' });
     }
@@ -788,14 +815,18 @@ app.put('/api/students/:id/status', async (req, res) => {
     await student.save();
     res.json(student);
   } catch (err) {
+    if (err.status === 400) {
+      return res.status(400).json({ error: err.message });
+    }
     res.status(500).json({ error: err.message });
   }
 });
 
 app.put('/api/students/:id/score', async (req, res) => {
   try {
+    const studentId = validateObjectId(req.params.id, 'student ID');
     const { score, incrementTest } = req.body;
-    const student = await Student.findById(req.params.id);
+    const student = await Student.findById(studentId);
     if (!student) {
       return res.status(404).json({ error: 'Student not found' });
     }
@@ -808,6 +839,9 @@ app.put('/api/students/:id/score', async (req, res) => {
     await student.save();
     res.json(student);
   } catch (err) {
+    if (err.status === 400) {
+      return res.status(400).json({ error: err.message });
+    }
     res.status(400).json({ error: err.message });
   }
 });
