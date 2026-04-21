@@ -9,8 +9,8 @@ function testParseDate() {
       'july': '07', 'august': '08', 'september': '09', 'october': '10', 'november': '11', 'december': '12'
     };
     
-    // Month name with/without spaces around -/spaces
-    let match = dateStr.match(/^(\\d{1,2})\\s*-?\\s*([a-zA-Z]+)\\s*-?\\s*(\\d{4})$/i);
+  // Month name - flexible for "30-October-2001" 
+  let match = dateStr.match(/^(\\d{1,2})(?:\\s*- |-) ([a-zA-Z]+)(?:\\s*- |-)(\\d{4})$/i);
     if (match) {
       const day = match[1].padStart(2, '0');
       const monthName = match[2].toLowerCase().trim();
@@ -21,8 +21,8 @@ function testParseDate() {
       }
     }
     
-    // Numeric with/without spaces around -
-    match = dateStr.match(/^(\\d{1,2})\\s*-?\\s*(\\d{1,2})\\s*-?\\s*(\\d{4})$/);
+  // Numeric for "30-10-2001"
+  match = dateStr.match(/^(\\d{1,2})(?:\\s*- |-)(\\d{1,2})(?:\\s*- |-)(\\d{4})$/);
     if (match) {
       const day = match[1].padStart(2, '0');
       const month = match[2].padStart(2, '0');

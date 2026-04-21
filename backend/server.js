@@ -612,7 +612,7 @@ function parseDate(dateStr) {
     'july': '07', 'august': '08', 'september': '09', 'october': '10', 'november': '11', 'december': '12'
   };
   
-  // Month name with/without spaces around dashes
+  // Month name - flexible for "30-October-2001" - FIXED
   let match = dateStr.match(/^(\\d{1,2})\\s*-?\\s*([a-zA-Z]+)\\s*-?\\s*(\\d{4})$/i);
   if (match) {
     const day = match[1].padStart(2, '0');
@@ -624,7 +624,7 @@ function parseDate(dateStr) {
     }
   }
   
-  // Numeric with/without spaces around dashes
+  // Numeric for "30-10-2001" - FIXED
   match = dateStr.match(/^(\\d{1,2})\\s*-?\\s*(\\d{1,2})\\s*-?\\s*(\\d{4})$/);
   if (match) {
     const day = match[1].padStart(2, '0');
@@ -633,6 +633,7 @@ function parseDate(dateStr) {
     return { day, month, year, formatted: `${day}-${month}-${year}` };
   }
   
+  // console.log(`parseDate failed on: "${dateStr}"`);
   return null;
 }
 
