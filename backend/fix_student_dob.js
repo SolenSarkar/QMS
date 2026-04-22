@@ -21,7 +21,7 @@ async function fixStudentDOB() {
 
   console.log('Before:', { name: student.name, rollNumber: student.rollNumber, dob: student.dateOfBirth });
 
-  student.dateOfBirth = '30-October-2001';
+  student.dateOfBirth = '30-10-2001';
   await student.save();
 
   console.log('After fix:', { name: student.name, rollNumber: student.rollNumber, dob: student.dateOfBirth });
