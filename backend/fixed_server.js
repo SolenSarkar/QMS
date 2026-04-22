@@ -198,8 +198,8 @@ function parseDate(dateStr) {
     'july': '07', 'august': '08', 'september': '09', 'october': '10', 'november': '11', 'december': '12'
   };
   
-  // Month name: "30-October-2001" or "30 - October - 2001"
-  let match = dateStr.match(/^(\\d{1,2})\\s*-?\\s*([a-z]+)\\s*-?\\s*(\\d{4})$/i);
+  // Month name: "30-October-2001" - FIXED regex for hyphen only
+  let match = dateStr.match(/^(\\d{1,2})-([a-z]+)-(\\d{4})$/);
   if (match) {
     const day = match[1].padStart(2, '0');
     const monthName = match[2].toLowerCase().trim();
