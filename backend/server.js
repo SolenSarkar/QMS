@@ -619,15 +619,22 @@ app.get('/api/students/:id', async (req, res) => {
 function parseDate(dateStr) {
   if (!dateStr) return null;
   
-  dateStr = dateStr.trim().toLowerCase();
+  dateStr = dateStr.trim().toLowerCase().replace(/[\\s]+/g, '-');
   
-  const monthMap = {
+  const monthMapFull = {
     'january': '01', 'february': '02', 'march': '03', 'april': '04', 'may': '05', 'june': '06',
     'july': '07', 'august': '08', 'september': '09', 'october': '10', 'november': '11', 'december': '12'
   };
   
-  // Month name: "30-october-2001" or "30 - october - 2001"
-  let match = dateStr.match(/^(\\d{1,2})[-\\s]+([a-z]+)[-\\s]+(\\d{4})$/i);
+  const monthMapShort = {
+    'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04', 'may': '05', 'jun': '06',
+    'jul': '07', 'aug': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
+  };
+  
+  const monthMap = { ...monthMapFull, ...monthMapShort };
+  
+  // Full month name: "30-october-2001"
+  let match = dateStr.match(/^(\\d{1,2})-(january|february|march|april|may|june|july|august|september|october|november|december)-(\\d{4})$/i);
   if (match) {
     const day = match[1].padStart(2, '0');
     const monthName = match[2].toLowerCase().trim();
@@ -635,19 +642,33 @@ function parseDate(dateStr) {
     const month = monthMap[monthName];
     if (month) {
       const result = {day, month, year, formatted: `${day}-${month}-${year}` };
-      console.log(`parseDate "${dateStr}" → `, result);
+      console.log(`parseDate FULL "${dateStr}" → `, result);
       return result;
     }
   }
   
-  // Numeric: "30-10-2001" or "30 - 10 - 2001"
-  match = dateStr.match(/^(\\d{1,2})[-\\s]+(\\d{1,2})[-\\s]+(\\d{4})$/);
+  // Short month name: "30-oct-2001"
+  match = dateStr.match(/^(\\d{1,2})-(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)-(\\d{4})$/i);
+  if (match) {
+    const day = match[1].padStart(2, '0');
+    const monthName = match[2].toLowerCase().trim();
+    const year = match[3];
+    const month = monthMap[monthName];
+    if (month) {
+      const result = {day, month, year, formatted: `${day}-${month}-${year}` };
+      console.log(`parseDate SHORT "${dateStr}" → `, result);
+      return result;
+    }
+  }
+  
+  // Numeric: "30-10-2001"
+  match = dateStr.match(/^(\\d{1,2})-(\\d{1,2})-(\\d{4})$/);
   if (match) {
     const day = match[1].padStart(2, '0');
     const month = match[2].padStart(2, '0');
     const year = match[3];
     const result = { day, month, year, formatted: `${day}-${month}-${year}` };
-    console.log(`parseDate "${dateStr}" → `, result);
+    console.log(`parseDate NUMERIC "${dateStr}" → `, result);
     return result;
   }
   
@@ -671,6 +692,8 @@ app.get('/api/students/login', (req, res) => {
 });
 
 app.post('/api/students/login', async (req, res) => {
+  console.log('=== STUDENT LOGIN ATTEMPT ===');
+  console.log('Raw request body:', req.body);
   try {
     const { name: rawName, rollNumber: rawRoll, dateOfBirth: rawDob } = req.body;
     
@@ -704,7 +727,7 @@ app.post('/api/students/login', async (req, res) => {
       console.log('🔍 DOB PARSED:', { input: parsedInput?.formatted, db: parsedDb?.formatted });
       if (!parsedInput || !parsedDb || parsedInput.formatted !== parsedDb.formatted) {
         console.log('❌ DOB MISMATCH - rejecting login');
-        return res.status(401).json({ error: 'DOB mismatch' });
+        return res.status(401).json({ error: 'Invalid DOB. Expected format: DD-MMM-YYYY (e.g., 30-October-2001)' });
       }
       console.log('✅ DOB MATCH - continuing login');
     }
