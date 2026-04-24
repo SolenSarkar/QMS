@@ -1184,4 +1184,18 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.listen(5000, () => console.log('Server running on port 5000'));
+// ==================== STATIC FILES & SPA ROUTING ====================
+
+// Serve static files from the dist folder (production build)
+const distPath = path.join(__dirname, '..', 'dist');
+app.use(express.static(distPath));
+
+// Catch-all route: serve index.html for any non-API GET request (SPA routing)
+app.get(/.*/, (req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'));
+});
+
+// ==================== START SERVER ====================
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
