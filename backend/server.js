@@ -619,7 +619,7 @@ app.get('/api/students/:id', async (req, res) => {
 function parseDate(dateStr) {
   if (!dateStr) return null;
   
-  dateStr = dateStr.trim().toLowerCase().replace(/[\\s]+/g, '-');
+  dateStr = dateStr.trim().toLowerCase().replace(/[\s]+/g, '-');
   
   const monthMapFull = {
     'january': '01', 'february': '02', 'march': '03', 'april': '04', 'may': '05', 'june': '06',
@@ -634,7 +634,7 @@ function parseDate(dateStr) {
   const monthMap = { ...monthMapFull, ...monthMapShort };
   
   // Full month name: "30-october-2001"
-  let match = dateStr.match(/^(\\d{1,2})-(january|february|march|april|may|june|july|august|september|october|november|december)-(\\d{4})$/i);
+  let match = dateStr.match(/^(\d{1,2})-(january|february|march|april|may|june|july|august|september|october|november|december)-(\d{4})$/i);
   if (match) {
     const day = match[1].padStart(2, '0');
     const monthName = match[2].toLowerCase().trim();
@@ -648,7 +648,7 @@ function parseDate(dateStr) {
   }
   
   // Short month name: "30-oct-2001"
-  match = dateStr.match(/^(\\d{1,2})-(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)-(\\d{4})$/i);
+  match = dateStr.match(/^(\d{1,2})-(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)-(\d{4})$/i);
   if (match) {
     const day = match[1].padStart(2, '0');
     const monthName = match[2].toLowerCase().trim();
@@ -662,7 +662,7 @@ function parseDate(dateStr) {
   }
   
   // Numeric: "30-10-2001"
-  match = dateStr.match(/^(\\d{1,2})-(\\d{1,2})-(\\d{4})$/);
+  match = dateStr.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
   if (match) {
     const day = match[1].padStart(2, '0');
     const month = match[2].padStart(2, '0');

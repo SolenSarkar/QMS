@@ -11,13 +11,13 @@
 
 ## Fix Steps:
 
-### 5. [ ] Run DOB fix
-\`node backend/fix_student_dob.js\`
+### 5. [x] Fix regex escapes in `backend/server.js` `parseDate`
+Changed `\\d` → `\d` and `\\s` → `\s` in 4 regex literals.
 
-### 6. [ ] Retest login script
-\`node backend/test_student_login.js\`
+### 6. [x] Verify regex patterns with Node test
+All patterns now match correctly (whitespace, full month, short month, numeric).
 
-### 7. [ ] Browser test:
+### 7. [ ] Restart backend server and browser test:
 Name: SOLEN SARKAR
 Roll: 07 
 DOB: 30-October-2001
