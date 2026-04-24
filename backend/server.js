@@ -906,11 +906,34 @@ app.get('/api/test-records/:studentId', async (req, res) => {
 // NEW: Test records summary for TestCard
 app.get('/api/test-records-summary/:studentId', async (req, res) => {
   try {
-    const totalRecords = await TestRecord.countDocuments({ studentId: req.params.studentId });
+    const student = await Student.findById(req.params.studentId);
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    const testsTaken = await TestRecord.countDocuments({ studentId: req.params.studentId });
+
+    // Count available tests: active permits for question papers in the student's class
+    let totalAvailable = 0;
+    if (student.classId) {
+      const papers = await QuestionPaper.find({ classId: student.classId });
+      const paperObjectIds = papers.map(p => p._id);
+
+      const now = new Date();
+      const permits = await QuestionPaperPermit.find({
+        questionPaperId: { $in: paperObjectIds },
+        startDate: { $lte: now },
+        endDate: { $gte: now }
+      });
+
+      totalAvailable = permits.length;
+    }
+
+    const pending = Math.max(0, totalAvailable - testsTaken);
     const summary = {
-      total: totalRecords,
-      completed: totalRecords,  // All saved records are completed
-      pending: 0               // No pending concept currently
+      total: testsTaken + pending,
+      completed: testsTaken,
+      pending: pending
     };
     res.json(summary);
   } catch (err) {

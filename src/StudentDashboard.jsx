@@ -1850,8 +1850,42 @@ useEffect(() => {
                       <p style={{ marginTop: 8, fontSize: '0.85em', color: '#666' }}>
                         {textAnswers[currentQuestionIndex]?.length > 0 ? '✓ Answer entered (editable)' : 'Type or use voice input above'}
                       </p>
+
+                      {/* Image Upload for text questions */}
+                      <div style={{ marginTop: 16, padding: '16px', backgroundColor: '#f8f9fa', borderRadius: 8, border: '2px dashed #dee2e6' }}>
+                        <label style={{ display: 'block', marginBottom: 12, fontWeight: 600, color: '#495057', fontSize: '0.95em' }}>
+                          📷 Upload Supporting Image (<strong>4MB max</strong>)
+                        </label>
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          onChange={(e) => handleImageChange(currentQuestionIndex, e.target.files[0])}
+                          style={{ width: '100%', padding: '12px', borderRadius: 6, border: '1px solid #ddd', backgroundColor: '#fff' }} 
+                        />
+                        {imageFiles[currentQuestionIndex] && (
+                          <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <img 
+                              src={URL.createObjectURL(imageFiles[currentQuestionIndex])} 
+                              alt="Preview" 
+                              style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: '2px solid #4caf50' }} 
+                            />
+                            <div>
+                              <p style={{ margin: '0 0 4px 0', fontWeight: 600, color: '#28a745' }}>✅ Image selected ({(imageFiles[currentQuestionIndex].size / 1024 / 1024).toFixed(1)} MB)</p>
+                              <button 
+                                onClick={() => removeImage(currentQuestionIndex)}
+                                style={{ padding: '6px 12px', borderRadius: 4, border: 'none', backgroundColor: '#dc3545', color: '#fff', fontSize: '0.85em', cursor: 'pointer' }}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                        {!imageFiles[currentQuestionIndex] && (
+                          <p style={{ marginTop: 8, fontSize: '0.85em', color: '#6c757d', fontStyle: 'italic' }}>Optional: Upload image/diagram to support your answer</p>
+                        )}
+                      </div>
                     </div>
-                  ) : questionType === 'numeric' || questionType === 'text' ? (
+                  ) : questionType === 'numeric' ? (
                     <div style={{ marginTop: 16 }}>
                       <input 
                         type={questionType === 'numeric' ? 'number' : 'text'} 
