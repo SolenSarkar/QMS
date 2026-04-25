@@ -931,7 +931,7 @@ app.get('/api/test-records-summary/:studentId', async (req, res) => {
 
     const pending = Math.max(0, totalAvailable - testsTaken);
     const summary = {
-      total: testsTaken + pending,
+      total: totalAvailable,
       completed: testsTaken,
       pending: pending
     };
