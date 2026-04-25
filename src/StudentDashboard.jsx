@@ -1,15 +1,22 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 import { showToast } from './Toast';
-import API_ENDPOINTS from './api';
+import { API_ENDPOINTS } from './api';
 
 function StudentDashboard({ name, studentData, onProjectTitleClick, onLogout }) {
+  const normalizeId = (id) => {
+    if (!id) return "";
+    if (typeof id === 'string') return id;
+    if (id.$oid) return id.$oid;
+    return String(id);
+  };
+
   const rollNumber = studentData?.rollNumber || '';
   const dateOfBirth = studentData?.dateOfBirth || '';
   const className = studentData?.className || studentData?.classId?.valueName || '';
   const boardName = studentData?.boardName || studentData?.boardId?.valueName || '';
-  const classId = studentData?.classId || '';
-  const studentId = studentData?._id || '';
+  const classId = normalizeId(studentData?.classId) || '';
+  const studentId = normalizeId(studentData?._id);
 
   const [activeTab, setActiveTab] = useState('home');
   const [subjects, setSubjects] = useState([]);
@@ -576,13 +583,6 @@ useEffect(() => {
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
 
-  const normalizeId = (id) => {
-    if (!id) return "";
-    if (typeof id === 'string') return id;
-    if (id.$oid) return id.$oid;
-    return String(id);
-  };
-
   useEffect(() => {
     if (!classId) {
       setLoading(false);
@@ -643,6 +643,8 @@ useEffect(() => {
         if (response.ok) {
           const data = await response.json();
           setTestSummary(data);
+        } else {
+          console.error('Test summary API error:', response.status, await response.text());
         }
       } catch (err) {
         console.error("Error fetching test summary:", err);
@@ -657,6 +659,8 @@ useEffect(() => {
         if (response.ok) {
           const data = await response.json();
           setTestRecords(data);
+        } else {
+          console.error('Test records API error:', response.status, await response.text());
         }
       } catch (err) {
         console.error("Error fetching test card records:", err);
