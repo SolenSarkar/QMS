@@ -251,6 +251,19 @@ app.get('/api/question-paper-permits/:questionPaperId', async (req, res) => {
   }
 });
 
+app.delete('/api/question-paper-permits/:id', async (req, res) => {
+  try {
+    const permit = await QuestionPaperPermit.findByIdAndDelete(req.params.id);
+    if (!permit) {
+      return res.status(404).json({ error: 'Permit not found' });
+    }
+    res.json({ message: 'Permit deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting permit:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Add a question (JSON or FormData with image)
 app.post('/api/questions', upload.single('image'), async (req, res) => {
   try {

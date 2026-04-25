@@ -433,11 +433,21 @@ export default function QuestionPapers({ onHomeClick }) {
         method: 'DELETE'
       });
       
+      // Check if response is JSON before parsing
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('Non-JSON response from server:', text.substring(0, 200));
+        showToast(`Failed to delete permit. Server returned status ${response.status}. Please check if the backend server is running.`, 'error');
+        return;
+      }
+      
+      const result = await response.json();
+      
       if (response.ok) {
         showToast('Permit deleted successfully!', 'success');
         fetchPermits(); // Refresh list
       } else {
-        const result = await response.json();
         showToast(`Failed to delete: ${result.error || 'Unknown error'}`, 'error');
       }
     } catch (err) {

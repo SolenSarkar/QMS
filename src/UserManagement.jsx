@@ -15,6 +15,9 @@ export default function UserManagement({ onHomeClick }) {
   const [testRecords, setTestRecords] = useState([]);
   const [loadingTestRecords, setLoadingTestRecords] = useState(false);
 
+  // Action dropdown state
+  const [openActionMenuId, setOpenActionMenuId] = useState(null);
+
   // Form states
   const [formData, setFormData] = useState({
     name: "",
@@ -78,6 +81,17 @@ export default function UserManagement({ onHomeClick }) {
   useEffect(() => {
     fetchUsers();
   }, [activeTab]);
+
+  // Close action menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.action-dropdown-container')) {
+        setOpenActionMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Format ID
   const formatId = (id) => {
@@ -343,7 +357,7 @@ export default function UserManagement({ onHomeClick }) {
               )}
               <th>Status</th>
               <th>Edit</th>
-              <th>...</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -399,13 +413,69 @@ export default function UserManagement({ onHomeClick }) {
                         <span className="slider round"></span>
                       </label>
                     </td>
-                    <td style={{ position: 'relative' }}>
+                    <td style={{ position: 'relative' }} className="action-dropdown-container">
                       <span
-                        style={{ fontWeight: 'bold', fontSize: 18, cursor: 'pointer' }}
-                        onClick={() => openPopup(student)}
+                        style={{ fontWeight: 'bold', fontSize: 18, cursor: 'pointer', padding: '0 8px' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenActionMenuId(openActionMenuId === student._id ? null : student._id);
+                        }}
+                        title="Actions"
                       >
                         ⋮
                       </span>
+                      {openActionMenuId === student._id && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            right: 0,
+                            top: '100%',
+                            background: '#fff',
+                            border: '1px solid #ddd',
+                            borderRadius: 6,
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                            zIndex: 10,
+                            minWidth: 120,
+                            overflow: 'hidden'
+                          }}
+                        >
+                          <div
+                            style={{
+                              padding: '10px 16px',
+                              cursor: 'pointer',
+                              fontSize: '0.9em',
+                              fontWeight: 500,
+                              color: '#333',
+                              borderBottom: '1px solid #eee'
+                            }}
+                            onMouseEnter={(e) => e.target.style.background = '#f5f5f5'}
+                            onMouseLeave={(e) => e.target.style.background = '#fff'}
+                            onClick={() => {
+                              setOpenActionMenuId(null);
+                              openPopup(student);
+                            }}
+                          >
+                            Update
+                          </div>
+                          <div
+                            style={{
+                              padding: '10px 16px',
+                              cursor: 'pointer',
+                              fontSize: '0.9em',
+                              fontWeight: 500,
+                              color: '#f44336'
+                            }}
+                            onMouseEnter={(e) => e.target.style.background = '#f5f5f5'}
+                            onMouseLeave={(e) => e.target.style.background = '#fff'}
+                            onClick={() => {
+                              setOpenActionMenuId(null);
+                              deleteUser(student._id);
+                            }}
+                          >
+                            Delete
+                          </div>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -436,13 +506,69 @@ export default function UserManagement({ onHomeClick }) {
                         <span className="slider round"></span>
                       </label>
                     </td>
-                    <td style={{ position: 'relative' }}>
+                    <td style={{ position: 'relative' }} className="action-dropdown-container">
                       <span
-                        style={{ fontWeight: 'bold', fontSize: 18, cursor: 'pointer' }}
-                        onClick={() => openPopup(admin)}
+                        style={{ fontWeight: 'bold', fontSize: 18, cursor: 'pointer', padding: '0 8px' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenActionMenuId(openActionMenuId === admin._id ? null : admin._id);
+                        }}
+                        title="Actions"
                       >
                         ⋮
                       </span>
+                      {openActionMenuId === admin._id && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            right: 0,
+                            top: '100%',
+                            background: '#fff',
+                            border: '1px solid #ddd',
+                            borderRadius: 6,
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                            zIndex: 10,
+                            minWidth: 120,
+                            overflow: 'hidden'
+                          }}
+                        >
+                          <div
+                            style={{
+                              padding: '10px 16px',
+                              cursor: 'pointer',
+                              fontSize: '0.9em',
+                              fontWeight: 500,
+                              color: '#333',
+                              borderBottom: '1px solid #eee'
+                            }}
+                            onMouseEnter={(e) => e.target.style.background = '#f5f5f5'}
+                            onMouseLeave={(e) => e.target.style.background = '#fff'}
+                            onClick={() => {
+                              setOpenActionMenuId(null);
+                              openPopup(admin);
+                            }}
+                          >
+                            Update
+                          </div>
+                          <div
+                            style={{
+                              padding: '10px 16px',
+                              cursor: 'pointer',
+                              fontSize: '0.9em',
+                              fontWeight: 500,
+                              color: '#f44336'
+                            }}
+                            onMouseEnter={(e) => e.target.style.background = '#f5f5f5'}
+                            onMouseLeave={(e) => e.target.style.background = '#fff'}
+                            onClick={() => {
+                              setOpenActionMenuId(null);
+                              deleteUser(admin._id);
+                            }}
+                          >
+                            Delete
+                          </div>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))
