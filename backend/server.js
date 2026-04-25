@@ -913,7 +913,7 @@ app.get('/api/test-records-summary/:studentId', async (req, res) => {
 
     const testsTaken = await TestRecord.countDocuments({ studentId: req.params.studentId });
 
-    // Count available tests: active permits for question papers in the student's class
+    // Count available tests: active permits for unique question papers in the student's class
     let totalAvailable = 0;
     if (student.classId) {
       const papers = await QuestionPaper.find({ classId: student.classId });
@@ -926,7 +926,13 @@ app.get('/api/test-records-summary/:studentId', async (req, res) => {
         endDate: { $gte: now }
       });
 
-      totalAvailable = permits.length;
+      // Count unique question papers to avoid duplicate permits inflating the count
+      const uniquePaperIds = new Set();
+      permits.forEach(permit => {
+        const pid = permit.questionPaperId ? permit.questionPaperId.toString() : null;
+        if (pid) uniquePaperIds.add(pid);
+      });
+      totalAvailable = uniquePaperIds.size;
     }
 
     const pending = Math.max(0, totalAvailable - testsTaken);

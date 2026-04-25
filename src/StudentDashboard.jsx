@@ -22,8 +22,7 @@ function StudentDashboard({ name, studentData, onProjectTitleClick, onLogout }) 
   const [subjects, setSubjects] = useState([]);
   const [subjectsWithQuestions, setSubjectsWithQuestions] = useState({});
   const [loading, setLoading] = useState(true);
-  const [availableCount, setAvailableCount] = useState(0);
-  const [incompleteCount, setIncompleteCount] = useState(0);
+
 
   const [selectedTestSubject, setSelectedTestSubject] = useState("");
   const [selectedDifficulty, setSelectedDifficulty] = useState("");
@@ -35,7 +34,7 @@ function StudentDashboard({ name, studentData, onProjectTitleClick, onLogout }) 
   const [reviewRecord, setReviewRecord] = useState(null);
 
   const [testRecords, setTestRecords] = useState([]);
-  const [testSummary, setTestSummary] = useState({ total: 0, completed: 0, pending: 0 });
+  const [testSummary, setTestSummary] = useState({ available: 0, completed: 0, notCompleted: 0 });
   const [loadingResults, setLoadingResults] = useState(false);
   const [loadingTestCard, setLoadingTestCard] = useState(true);
   const [loadingTestSummary, setLoadingTestSummary] = useState(true);
@@ -430,6 +429,7 @@ useEffect(() => {
       };
 
       const hasImages = Object.values(imageFiles).some(file => file !== null && file !== undefined);
+      let response;
       if (hasImages) {
         // FormData for image submission
         const formData = new FormData();
@@ -448,13 +448,13 @@ useEffect(() => {
           }
         });
         
-        const response = await fetch('https://qms-sjuv.onrender.com/api/test-records', {
+        response = await fetch('https://qms-sjuv.onrender.com/api/test-records', {
           method: 'POST',
           body: formData
         });
       } else {
         // JSON for regular submission
-        const response = await fetch('https://qms-sjuv.onrender.com/api/test-records', {
+        response = await fetch('https://qms-sjuv.onrender.com/api/test-records', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -642,7 +642,11 @@ useEffect(() => {
         const response = await fetch(API_ENDPOINTS.TEST_SUMMARY(studentId));
         if (response.ok) {
           const data = await response.json();
-          setTestSummary(data);
+          setTestSummary({
+            available: data.total || 0,
+            completed: data.completed || 0,
+            notCompleted: data.pending || 0
+          });
         } else {
           console.error('Test summary API error:', response.status, await response.text());
         }
@@ -1330,16 +1334,16 @@ useEffect(() => {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 15 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#e3f2fd', borderRadius: 8, borderLeft: '4px solid #2196f3' }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: '#1565c0' }}>Total Tests</span>
-                    <span style={{ fontSize: 20, fontWeight: 700, color: '#1976d2' }}>{testSummary.total}</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: '#1565c0' }}>Test Available</span>
+                    <span style={{ fontSize: 20, fontWeight: 700, color: '#1976d2' }}>{testSummary.available}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#e8f5e9', borderRadius: 8, borderLeft: '4px solid #4caf50' }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: '#1b5e20' }}>Completed</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: '#1b5e20' }}>Test Completed</span>
                     <span style={{ fontSize: 20, fontWeight: 700, color: '#2e7d32' }}>{testSummary.completed}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#fff3e0', borderRadius: 8, borderLeft: '4px solid #ff9800' }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: '#bf360c' }}>Pending</span>
-                    <span style={{ fontSize: 20, fontWeight: 700, color: '#e65100' }}>{testSummary.pending}</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: '#bf360c' }}>Test Not Completed</span>
+                    <span style={{ fontSize: 20, fontWeight: 700, color: '#e65100' }}>{testSummary.notCompleted}</span>
                   </div>
                 </div>
               )}
