@@ -936,6 +936,53 @@ useEffect(() => {
     );
   };
 
+  const renderProfileTab = () => {
+    return (
+      <div style={{ padding: '20px' }}>
+        <h2 style={{ marginBottom: 24, color: '#333' }}>My Profile</h2>
+        <div style={{ background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', maxWidth: 600 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24 }}>
+            <div style={{ width: 80, height: 80, borderRadius: '50%', backgroundColor: '#667eea', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '2em', fontWeight: 700 }}>
+              {name ? name.charAt(0).toUpperCase() : '?'}
+            </div>
+            <div>
+              <h3 style={{ margin: '0 0 4px 0', color: '#333' }}>{name || 'Student'}</h3>
+              <p style={{ margin: 0, color: '#666', fontSize: '0.9em' }}>{rollNumber || 'No Roll Number'}</p>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gap: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #eee' }}>
+              <span style={{ color: '#666', fontWeight: 500 }}>Full Name</span>
+              <span style={{ color: '#333', fontWeight: 600 }}>{name || '-'}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #eee' }}>
+              <span style={{ color: '#666', fontWeight: 500 }}>Roll Number</span>
+              <span style={{ color: '#333', fontWeight: 600 }}>{rollNumber || '-'}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #eee' }}>
+              <span style={{ color: '#666', fontWeight: 500 }}>Date of Birth</span>
+              <span style={{ color: '#333', fontWeight: 600 }}>{dateOfBirth || '-'}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #eee' }}>
+              <span style={{ color: '#666', fontWeight: 500 }}>Class</span>
+              <span style={{ color: '#333', fontWeight: 600 }}>{className || '-'}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #eee' }}>
+              <span style={{ color: '#666', fontWeight: 500 }}>Board</span>
+              <span style={{ color: '#333', fontWeight: 600 }}>{boardName || '-'}</span>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowProfile(true)}
+            style={{ marginTop: 24, padding: '12px 24px', borderRadius: 6, border: 'none', backgroundColor: '#667eea', color: '#fff', fontWeight: 600, cursor: 'pointer', fontSize: '1em' }}
+          >
+            Edit Profile
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   const handleProfileChange = (e) => {
     const { name, value } = e.target;
     setProfileData(prev => ({ ...prev, [name]: value }));
@@ -1589,6 +1636,7 @@ useEffect(() => {
         )}
 
         {activeTab === 'queries' && renderQueriesTab()}
+        {activeTab === 'profile' && renderProfileTab()}
       </div>
 
       {showPaperPreview && selectedPaper && (
