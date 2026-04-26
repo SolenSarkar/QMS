@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './App.css';
 import { showToast } from './Toast';
 import { API_ENDPOINTS } from './api';
+import StudentChatbot from './StudentChatbot';
 
 function StudentDashboard({ name, studentData, onProjectTitleClick, onLogout }) {
   const normalizeId = (id) => {
@@ -2040,6 +2041,7 @@ useEffect(() => {
           </div>
         </div>
       )}
+      <StudentChatbot activeTab={activeTab} isTestActive={!!activeTest} />
     </div>
   );
 }
