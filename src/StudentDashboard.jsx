@@ -1382,15 +1382,15 @@ useEffect(() => {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 15 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#e3f2fd', borderRadius: 8, borderLeft: '4px solid #2196f3' }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: '#1565c0' }}>Test Available</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: '#1565c0' }}>Total</span>
                     <span style={{ fontSize: 20, fontWeight: 700, color: '#1976d2' }}>{testSummary.available}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#e8f5e9', borderRadius: 8, borderLeft: '4px solid #4caf50' }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: '#1b5e20' }}>Test Completed</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: '#1b5e20' }}>Completed</span>
                     <span style={{ fontSize: 20, fontWeight: 700, color: '#2e7d32' }}>{testSummary.completed}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#fff3e0', borderRadius: 8, borderLeft: '4px solid #ff9800' }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: '#bf360c' }}>Test Not Completed</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: '#bf360c' }}>Pending</span>
                     <span style={{ fontSize: 20, fontWeight: 700, color: '#e65100' }}>{testSummary.notCompleted}</span>
                   </div>
                 </div>

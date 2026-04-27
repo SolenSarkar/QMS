@@ -924,12 +924,19 @@ app.get('/api/test-records-summary/:studentId', async (req, res) => {
       return res.status(404).json({ error: 'Student not found' });
     }
 
-    const testsTaken = await TestRecord.countDocuments({ studentId: req.params.studentId });
-
     // Count available tests: active permits for unique question papers in the student's class
     let totalAvailable = 0;
+    let uniquePaperIds = new Set();
     if (student.classId) {
-      const papers = await QuestionPaper.find({ classId: student.classId });
+      // Get class name for fallback matching (papers may have only string 'class' field)
+      const classValue = await AttributeValue.findById(student.classId);
+      const className = classValue ? classValue.valueName : null;
+      
+      const paperQuery = className 
+        ? { $or: [{ classId: student.classId }, { class: className }] }
+        : { classId: student.classId };
+        
+      const papers = await QuestionPaper.find(paperQuery);
       const paperObjectIds = papers.map(p => p._id);
 
       const now = new Date();
@@ -940,13 +947,18 @@ app.get('/api/test-records-summary/:studentId', async (req, res) => {
       });
 
       // Count unique question papers to avoid duplicate permits inflating the count
-      const uniquePaperIds = new Set();
       permits.forEach(permit => {
         const pid = permit.questionPaperId ? permit.questionPaperId.toString() : null;
         if (pid) uniquePaperIds.add(pid);
       });
       totalAvailable = uniquePaperIds.size;
     }
+
+    // Count completed tests ONLY for papers with active permits
+    const testsTaken = await TestRecord.countDocuments({
+      studentId: req.params.studentId,
+      questionPaperId: { $in: Array.from(uniquePaperIds) }
+    });
 
     const pending = Math.max(0, totalAvailable - testsTaken);
     const summary = {
