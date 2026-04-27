@@ -224,7 +224,23 @@ export default function Results({ onHomeClick }) {
             ) : (
               filteredResults.map((record, index) => (
                 <tr key={index}>
-                  <td style={{ fontWeight: 600, color: '#1976d2' }}>{record.studentName}</td>
+                  <td style={{ fontWeight: 600, color: '#1976d2' }}>
+                    {record.studentName}
+                    {record.isAutoSubmitted && (
+                      <span style={{
+                        display: 'inline-block',
+                        marginLeft: 8,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        backgroundColor: '#ff9800',
+                        color: '#fff',
+                        fontSize: '0.75em',
+                        fontWeight: 600
+                      }}>
+                        Auto-Submitted
+                      </span>
+                    )}
+                  </td>
                   <td>{record.rollNumber}</td>
                   <td>{record.className}</td>
                   <td>{record.subjectName || '-'}</td>

@@ -77,7 +77,7 @@ function StudentDashboard({ name, studentData, onProjectTitleClick, onLogout }) 
     const timer = setInterval(() => {
       setTestTimeLeft(prev => {
         if (prev <= 1) {
-          handleSubmitTest();
+          handleTimeExpired();
           return 0;
         }
         return prev - 1;
@@ -85,6 +85,34 @@ function StudentDashboard({ name, studentData, onProjectTitleClick, onLogout }) 
     }, 1000);
     return () => clearInterval(timer);
   }, [activeTest, testTimeLeft, testSubmitted]);
+
+  // Handle time expiry - check if permit still exists before auto-submitting
+  const handleTimeExpired = async () => {
+    if (!activeTest || !activeTest.permit) {
+      closeTest();
+      return;
+    }
+    
+    try {
+      const permitId = normalizeId(activeTest.permit._id);
+      const checkRes = await fetch(`https://qms-sjuv.onrender.com/api/question-paper-permits/check/${permitId}`);
+      const checkData = await checkRes.json();
+      
+      if (!checkData.exists) {
+        // Permit deleted by admin - close test without penalty
+        showToast('This test permit has been removed by the admin. Test closed without penalty.', 'info');
+        closeTest();
+        return;
+      }
+      
+      // Permit still exists - auto-submit with 0 score
+      await handleSubmitTest(true);
+    } catch (err) {
+      console.error('Error checking permit on time expiry:', err);
+      // On error, still auto-submit to be safe
+      await handleSubmitTest(true);
+    }
+  };
 
   useEffect(() => {
     if (activeTest && !testSubmitted) {
@@ -314,7 +342,7 @@ useEffect(() => {
     }));
   };
 
-  const handleSubmitTest = async () => {
+  const handleSubmitTest = async (isAutoSubmit = false) => {
     if (!activeTest) return;
     setTestSubmitting(true);
     try {
@@ -465,7 +493,8 @@ useEffect(() => {
             totalQuestions: questions.length,
             correctAnswers: correctAnswers,
             subjectName: activeTest.paper.subject,
-            answers: answers
+            answers: answers,
+            isAutoSubmitted: isAutoSubmit
           })
         });
       }

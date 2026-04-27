@@ -264,6 +264,17 @@ app.delete('/api/question-paper-permits/:id', async (req, res) => {
   }
 });
 
+// NEW: Check if a permit still exists (for auto-submit logic)
+app.get('/api/question-paper-permits/check/:permitId', async (req, res) => {
+  try {
+    const permit = await QuestionPaperPermit.findById(req.params.permitId);
+    res.json({ exists: !!permit });
+  } catch (err) {
+    console.error('Error checking permit:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Add a question (JSON or FormData with image)
 app.post('/api/questions', upload.single('image'), async (req, res) => {
   try {
@@ -456,6 +467,8 @@ const testRecordSchema = new mongoose.Schema({
   correctAnswers: { type: Number, required: true },
   subjectName: { type: String },
   testDate: { type: Date, default: Date.now },
+  isAutoSubmitted: { type: Boolean, default: false },
+  status: { type: String, default: 'completed' },
   answers: { 
     type: [{
       questionText: String,

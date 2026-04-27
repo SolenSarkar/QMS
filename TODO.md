@@ -1,26 +1,30 @@
-# TODO - Fix TestCard Counts
+# TODO: Auto-mark test as 0 when time expires (unless permit deleted by admin)
 
-## Plan
-- [x] Step 1: Fix `backend/server.js` `/api/test-records-summary/:studentId` to correctly count total, completed, and pending tests
-- [x] Step 2: Fixed corrupted `backend/server.js` file (restored missing routes: `/api/students/class/:classId`, `/api/students/board/:boardId`, `/api/test-records/:studentId`)
-- [x] Step 3: Backend fix verified - syntax check passed
+## Task Analysis
+When a student's test time expires and they haven't submitted answers, automatically mark the test with 0 score and set the review accordingly. BUT if the admin has deleted the permit for that question paper, do NOT mark it as 0 (student shouldn't be penalized for a removed permit).
 
-## Summary of Changes
+## Implementation Plan - COMPLETED ✅
 
-### `backend/server.js` - `/api/test-records-summary/:studentId` (FIXED)
-**Problem:** The `completed` count was incorrectly filtering to only tests for papers with active permits, and `pending` was calculated as `total - completed` using this wrong count. This caused incorrect display like "Total=1, Completed=1, Pending=0" when a test was taken for an expired paper.
+### Step 1: Backend - Add auto-submitted flag to TestRecord schema ✅
+- `isAutoSubmitted` boolean field (default: false) - ALREADY EXISTS in backend/server.js
+- `status` field - ALREADY EXISTS in backend/server.js
 
-**Root Cause:** 
-- Old code: `completed = TestRecord.countDocuments({ studentId, questionPaperId: { $in: activePermitPaperIds } })`
-- This missed tests taken for expired papers, making `completed` appear lower than actual.
+### Step 2: Backend - Add permit existence check API ✅
+- GET /api/question-paper-permits/check/:permitId endpoint - ALREADY EXISTS in backend/server.js
 
-**Fix:**
-1. `completed`: Count ALL test records for the student (regardless of permit status) via `TestRecord.find({ studentId })`
-2. `pending`: Count available papers (with active permits) that have NOT been attempted yet by comparing `availablePaperIds` vs `attemptedPaperIds`
-3. `total`: Total available papers with active permits (unchanged logic)
+### Step 3: Frontend (StudentDashboard.jsx) - Auto-submit on timer expiry with permit check ✅
+- Added `handleTimeExpired` function that:
+  1. Calls permit check API to verify permit still exists
+  2. If permit deleted → closes test without saving, shows toast "Test closed without penalty"
+  3. If permit exists → auto-submits test with `isAutoSubmitted: true`
+- Modified `handleSubmitTest` to accept `isAutoSubmit` parameter
+- Added `isAutoSubmitted: isAutoSubmit` to JSON submission payload
 
-This ensures accurate counts:
-- If 1 test available, 1 completed: **Total=1, Completed=1, Pending=0**
-- If 1 test available, 0 completed: **Total=1, Completed=0, Pending=1**
-- If 0 tests available, 2 completed (expired): **Total=0, Completed=2, Pending=0**
+### Step 4: Results.jsx - Show auto-submitted status ✅
+- Added orange "Auto-Submitted" badge next to student name in results table
+
+## Changes Made
+1. `src/StudentDashboard.jsx` - Timer expiry logic, permit check, auto-submit with flag
+2. `src/Results.jsx` - Visual indicator for auto-submitted tests
+3. `backend/server.js` - Already had required schema and API (no changes needed)
 
