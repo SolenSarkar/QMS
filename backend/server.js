@@ -924,9 +924,20 @@ app.get('/api/test-records-summary/:studentId', async (req, res) => {
       return res.status(404).json({ error: 'Student not found' });
     }
 
+    // Count ALL completed tests for the student (regardless of permit status)
+    const allTestRecords = await TestRecord.find({ studentId: req.params.studentId });
+    const completed = allTestRecords.length;
+
+    // Build set of all attempted paper IDs
+    const attemptedPaperIds = new Set();
+    allTestRecords.forEach(record => {
+      const pid = record.questionPaperId ? record.questionPaperId.toString() : null;
+      if (pid) attemptedPaperIds.add(pid);
+    });
+
     // Count available tests: active permits for unique question papers in the student's class
     let totalAvailable = 0;
-    let uniquePaperIds = new Set();
+    let availablePaperIds = new Set();
     if (student.classId) {
       // Get class name for fallback matching (papers may have only string 'class' field)
       const classValue = await AttributeValue.findById(student.classId);
@@ -949,21 +960,22 @@ app.get('/api/test-records-summary/:studentId', async (req, res) => {
       // Count unique question papers to avoid duplicate permits inflating the count
       permits.forEach(permit => {
         const pid = permit.questionPaperId ? permit.questionPaperId.toString() : null;
-        if (pid) uniquePaperIds.add(pid);
+        if (pid) availablePaperIds.add(pid);
       });
-      totalAvailable = uniquePaperIds.size;
+      totalAvailable = availablePaperIds.size;
     }
 
-    // Count completed tests ONLY for papers with active permits
-    const testsTaken = await TestRecord.countDocuments({
-      studentId: req.params.studentId,
-      questionPaperId: { $in: Array.from(uniquePaperIds) }
+    // Calculate pending: available papers that haven't been attempted
+    let pending = 0;
+    availablePaperIds.forEach(pid => {
+      if (!attemptedPaperIds.has(pid)) {
+        pending++;
+      }
     });
 
-    const pending = Math.max(0, totalAvailable - testsTaken);
     const summary = {
       total: totalAvailable,
-      completed: testsTaken,
+      completed: completed,
       pending: pending
     };
     res.json(summary);
