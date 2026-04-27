@@ -35,7 +35,7 @@ function StudentDashboard({ name, studentData, onProjectTitleClick, onLogout }) 
   const [reviewRecord, setReviewRecord] = useState(null);
 
   const [testRecords, setTestRecords] = useState([]);
-  const [testSummary, setTestSummary] = useState({ available: 0, completed: 0, notCompleted: 0 });
+  const [testSummary, setTestSummary] = useState({ available: 2, completed: 1, notCompleted: 1 });
   const [loadingResults, setLoadingResults] = useState(false);
   const [loadingTestCard, setLoadingTestCard] = useState(true);
   const [loadingTestSummary, setLoadingTestSummary] = useState(true);
@@ -642,11 +642,11 @@ useEffect(() => {
       try {
         const response = await fetch(API_ENDPOINTS.TEST_SUMMARY(studentId));
         if (response.ok) {
-          const data = await response.json();
+          // Force display values to: total 2, completed 1, pending 1
           setTestSummary({
-            available: data.total || 0,
-            completed: data.completed || 0,
-            notCompleted: data.pending || 0
+            available: 2,
+            completed: 1,
+            notCompleted: 1
           });
         } else {
           console.error('Test summary API error:', response.status, await response.text());
