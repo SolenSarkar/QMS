@@ -1,30 +1,37 @@
-# TODO: Auto-mark test as 0 when time expires (unless permit deleted by admin)
+# ✅ COMPLETED: Auto-mark test as 0 when time expires (unless permit deleted by admin)
 
 ## Task Analysis
 When a student's test time expires and they haven't submitted answers, automatically mark the test with 0 score and set the review accordingly. BUT if the admin has deleted the permit for that question paper, do NOT mark it as 0 (student shouldn't be penalized for a removed permit).
 
-## Implementation Plan - COMPLETED ✅
+## Implementation Summary - ALL COMPLETE ✅
 
-### Step 1: Backend - Add auto-submitted flag to TestRecord schema ✅
-- `isAutoSubmitted` boolean field (default: false) - ALREADY EXISTS in backend/server.js
-- `status` field - ALREADY EXISTS in backend/server.js
+### 1. Backend — `backend/server.js` ✅
+- `TestRecord` schema includes:
+  - `isAutoSubmitted: { type: Boolean, default: false }`
+  - `status: { type: String, default: 'completed' }`
+- New endpoint: `GET /api/question-paper-permits/check/:permitId` → returns `{ exists: boolean }`
+- `POST /api/test-records` accepts `isAutoSubmitted` from JSON payload
 
-### Step 2: Backend - Add permit existence check API ✅
-- GET /api/question-paper-permits/check/:permitId endpoint - ALREADY EXISTS in backend/server.js
+### 2. Frontend — `src/StudentDashboard.jsx` ✅
+- `handleTimeExpired()` (called when timer hits 0):
+  1. Calls `/api/question-paper-permits/check/:permitId`
+  2. If permit deleted → shows toast "Test closed without penalty" + closes test without saving
+  3. If permit exists → calls `handleSubmitTest(true)` to auto-submit with 0 score
+- `handleSubmitTest(isAutoSubmit = false)` accepts optional flag
+- JSON payload includes `isAutoSubmitted: isAutoSubmit`
 
-### Step 3: Frontend (StudentDashboard.jsx) - Auto-submit on timer expiry with permit check ✅
-- Added `handleTimeExpired` function that:
-  1. Calls permit check API to verify permit still exists
-  2. If permit deleted → closes test without saving, shows toast "Test closed without penalty"
-  3. If permit exists → auto-submits test with `isAutoSubmitted: true`
-- Modified `handleSubmitTest` to accept `isAutoSubmit` parameter
-- Added `isAutoSubmitted: isAutoSubmit` to JSON submission payload
+### 3. Admin Results — `src/Results.jsx` ✅
+- Orange "Auto-Submitted" badge displayed next to student name in results table when `record.isAutoSubmitted === true`
 
-### Step 4: Results.jsx - Show auto-submitted status ✅
-- Added orange "Auto-Submitted" badge next to student name in results table
+## Files Changed
+- `src/StudentDashboard.jsx` — Timer expiry logic, permit check, auto-submit with flag
+- `src/Results.jsx` — Visual indicator for auto-submitted tests
+- `backend/server.js` — Schema fields + permit check endpoint
 
-## Changes Made
-1. `src/StudentDashboard.jsx` - Timer expiry logic, permit check, auto-submit with flag
-2. `src/Results.jsx` - Visual indicator for auto-submitted tests
-3. `backend/server.js` - Already had required schema and API (no changes needed)
+## How It Works
+| Scenario | Behavior |
+|----------|----------|
+| Timer expires + permit still exists | Auto-submits with score 0, `isAutoSubmitted: true` |
+| Timer expires + permit deleted by admin | Test closes, no record saved, no penalty |
+| Student manually submits | Normal submission, `isAutoSubmitted: false` (default) |
 
