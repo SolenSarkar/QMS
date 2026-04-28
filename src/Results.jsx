@@ -313,7 +313,7 @@ export default function Results({ onHomeClick }) {
                   
                   // Format the correct answer for display
                   const formatAnswer = (ans) => {
-                    if (ans === undefined || ans === null || ans === '') return 'Not Answered';
+                    if (ans === undefined || ans === null || ans === '') return '0';
                     if (typeof ans === 'number') {
                       // Check if it's a letter code (0-3 for A-D)
                       if (ans >= 0 && ans <= 25) {

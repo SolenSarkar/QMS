@@ -86,32 +86,14 @@ function StudentDashboard({ name, studentData, onProjectTitleClick, onLogout }) 
     return () => clearInterval(timer);
   }, [activeTest, testTimeLeft, testSubmitted]);
 
-  // Handle time expiry - check if permit still exists before auto-submitting
+  // Handle time expiry - auto-submit the paper as-is when time is up
   const handleTimeExpired = async () => {
-    if (!activeTest || !activeTest.permit) {
+    if (!activeTest) {
       closeTest();
       return;
     }
-    
-    try {
-      const permitId = normalizeId(activeTest.permit._id);
-      const checkRes = await fetch(`https://qms-sjuv.onrender.com/api/question-paper-permits/check/${permitId}`);
-      const checkData = await checkRes.json();
-      
-      if (!checkData.exists) {
-        // Permit deleted by admin - close test without penalty
-        showToast('This test permit has been removed by the admin. Test closed without penalty.', 'info');
-        closeTest();
-        return;
-      }
-      
-      // Permit still exists - auto-submit with 0 score
-      await handleSubmitTest(true);
-    } catch (err) {
-      console.error('Error checking permit on time expiry:', err);
-      // On error, still auto-submit to be safe
-      await handleSubmitTest(true);
-    }
+    // Always auto-submit whatever answers exist (unanswered get 0 marks)
+    await handleSubmitTest(true);
   };
 
   useEffect(() => {
@@ -469,6 +451,7 @@ useEffect(() => {
         formData.append('correctAnswers', correctAnswers);
         formData.append('subjectName', activeTest.paper.subject);
         formData.append('answersData', JSON.stringify(answers));
+        formData.append('isAutoSubmitted', isAutoSubmit ? 'true' : 'false');
         
         // Append image files
         Object.entries(imageFiles).forEach(([qIndex, file]) => {
@@ -1731,7 +1714,7 @@ useEffect(() => {
                   
                   // Format the correct answer for display
                   const formatAnswer = (ans) => {
-                    if (ans === undefined || ans === null || ans === '') return 'Not Answered';
+                    if (ans === undefined || ans === null || ans === '') return '0';
                     if (typeof ans === 'number') {
                       // Check if it's a letter code (0-3 for A-D)
                       if (ans >= 0 && ans <= 25) {
