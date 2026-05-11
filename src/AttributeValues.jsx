@@ -45,8 +45,14 @@ const AttributeValues = ({ onHomeClick }) => {
     const [newValue, setNewValue] = useState("");
     const [newStatus, setNewStatus] = useState("Active");
     const [showPopup, setShowPopup] = useState(false);
-    const [searchTerm, setSearchTerm] = useState("");
+    // Search for dropdown (attribute selector)
+    const [attributeSearchTerm, setAttributeSearchTerm] = useState("");
+
+    // Search for table rows (attribute values)
+    const [valueSearchTerm, setValueSearchTerm] = useState("");
+
   // Format value id similar to attribute id
+
   const formatId = (id) => {
     if (typeof id === 'number') {
       return `VAL${id.toString().padStart(3, '0')}`;
@@ -149,7 +155,7 @@ const payload = {
   };
 
         const filteredAttributes = attributes.filter((attr) =>
-          attr.name.toLowerCase().includes(searchTerm.toLowerCase())
+          attr.name.toLowerCase().includes(attributeSearchTerm.toLowerCase())
         );
 
 
@@ -157,8 +163,29 @@ const payload = {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const valuesPerPage = 5;
-  const totalPages = Math.ceil(values.length / valuesPerPage);
-  const paginatedValues = values.slice((currentPage - 1) * valuesPerPage, currentPage * valuesPerPage);
+  // totalPages recalculated after applying value search filter
+  const filteredValues = values.filter((val) => {
+    const q = (valueSearchTerm || "").toLowerCase().trim();
+    if (!q) return true;
+
+    const valueName = (val.valueName || "").toLowerCase();
+    const idStr = String(val._id || "").toLowerCase();
+    const status = (val.status || "").toLowerCase();
+    const stream = (val.stream || "").toLowerCase();
+
+    return (
+      valueName.includes(q) ||
+      idStr.includes(q) ||
+      status.includes(q) ||
+      stream.includes(q)
+    );
+  });
+
+  const totalPages = Math.ceil(filteredValues.length / valuesPerPage);
+  const paginatedValues = filteredValues.slice(
+    (currentPage - 1) * valuesPerPage,
+    currentPage * valuesPerPage
+  );
 
   // Show Stream column in the grid when selected class contains '11' or '12' (case-insensitive)
   let showStreamColumn = false;
@@ -167,10 +194,10 @@ const payload = {
     showStreamColumn = true;
   }
 
-  // Reset to first page when values change (e.g., attribute changes or add/delete)
+  // Reset to first page when values or value-search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [values]);
+  }, [values, valueSearchTerm]);
 
   const handleToggleStatus = (id) => {
     const val = values.find(v => v._id === id);
@@ -211,9 +238,9 @@ const payload = {
                 <input
                   type="text"
                   className="search-input"
-                  placeholder="Search attribute..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search values..."
+                  value={valueSearchTerm}
+                  onChange={(e) => setValueSearchTerm(e.target.value)}
                   style={{ marginRight: 10, padding: '8px 12px', borderRadius: 6, border: '1px solid #ccc', fontSize: '1em', minWidth: 180 }}
                 />
                 <select
